@@ -8,8 +8,6 @@
 Validator component for Vue.js
 
 
-**NOTICE: This repository have been merge in the vuejs/vue-validator. From now on we will develop and maintenance on the vuejs/vue-validator.**
-
 # Resuqirements
 - Vue.js ~`0.11.2`
 
@@ -334,28 +332,28 @@ Specify `validation` data scope name.
 
 If you specified the `myValidation` to namespace option, you can access validation result name as `myValidation`.
 
-If you did not specify, you can access validation result name as 'valiadtion' (default).
+If you did not specify, you can access validation result name as `valiadtion` (default).
 
 #### valid
 Specify `valid` data scope name.
 
 If you specified the `myValid` to namespace option, you can access validation result name as `myValid`.
 
-If you did not specify, you can access validation result name as 'valid' (default).
+If you did not specify, you can access validation result name as `valid` (default).
 
 #### invalid
 Specify `invalid` data scope name
 
 If you specified the `myInvalid` to namespace option, you can access validation result name as `myInvalid`.
 
-If you did not specify, you can access validation result name as 'invalid' (default).
+If you did not specify, you can access validation result name as `invalid` (default).
 
 #### dirty
 Specify `dirty` data scope name
 
 If you specified the `myDirty` to namespace option, you can access validation result name as `myDirty`.
 
-If you did not specify, you can access validation result name as 'dirty' (default).
+If you did not specify, you can access validation result name as `dirty` (default).
 
 
 ## Plugin Options
@@ -373,14 +371,14 @@ Specify vue-validator instance name.
 
 If you specified the `$myvalidator` to plugin option, you can access vue-validator instance name as `$myvalidation` on the viewmodel instance.
 
-If you did not specify, you can access validation result name as '$validator' (default).
+If you did not specify, you can access validation result name as `$validator` (default).
 
 ### directive
 Specify validate directive name.
 
 If you specified the `myvalidate` to plugin option, you can use validation directive name as `v-myvalidate`.
 
-If you did not specify, you can use validation directive name as 'v-validate' (default).
+If you did not specify, you can use validation directive name as `v-validate` (default).
 
 
 # Testing
