@@ -8,8 +8,8 @@
 Validator component for Vue.js
 
 
-# Resuqirements
-- Vue.js ~`0.11.2`
+# Requirements
+- Vue.js ^`0.11.2` (for 0.12: WIP)
 
 
 # Installation
@@ -23,12 +23,6 @@ $ npm install vue-validator
 
 ```shell
 $ bower install vue-validator
-```
-
-## component
-
-```shell
-$ component install vuejs/vue-validator
 ```
 
 ## duo
@@ -56,8 +50,8 @@ The following is an example.
 <form id="blog-form">
     <input type="text" v-model="comment" v-validate="minLength: 16, maxLength: 128">
     <div>
-        <span v-show="validation.comment.minLength">too long your comment.</span>
-        <span v-show="validation.comment.maxLength">too short your comment.</span>
+        <span v-show="validation.comment.minLength">Your comment is too short.</span>
+        <span v-show="validation.comment.maxLength">Your comment is too long.</span>
     </div>
     <input type="submit" value="send" v-if="valid">
 </form>
@@ -65,7 +59,7 @@ The following is an example.
 
 
 
-# Data 
+# Properties
 
 ## validation
 The `validation` keep the validation result of validator per each `v-model`.
@@ -103,15 +97,15 @@ For example, you can use `valid` as follows
 ```html
 <form id="user-form">
     ID: <input type="text" v-model="id" v-validate="required, minLength: 3, maxLength: 16"><br />
-    Password: <input type="password" v-model="password" v-validate="required, minLength: 8 maxLength: 16"><br />
+    Password: <input type="password" v-model="password" v-validate="required, minLength: 8, maxLength: 16"><br />
     <input type="submit" value="send" v-if="valid">
     <div>
-        <span v-if="validation.id.required">required your ID.</span>
-        <span v-if="validation.id.minLength">too short your ID.</span>
-        <span v-if="validation.id.maxLength">too long your ID.</span>
-        <span v-if="validation.password.required">required your password.</span>
-        <span v-if="validation.password.minLength">too short your password.</span>
-        <span v-if="validation.password.maxLength">too long your password.</span>
+        <span v-if="validation.id.required">Your ID is required.</span>
+        <span v-if="validation.id.minLength && id">Your ID is too short.</span>
+        <span v-if="validation.id.maxLength">Your ID is too long.</span>
+        <span v-if="validation.password.required">Password is required.</span>
+        <span v-if="validation.password.minLength && password">Your password is too short.</span>
+        <span v-if="validation.password.maxLength">Your password is too long.</span>
     </div>
 </form>
 ```
@@ -162,6 +156,9 @@ The `dirty` keep whether there was a change since initial value of `v-model`.
     - true: changed from the initial data
     - false: not changed from the initial data
 
+The `dirty` keep two types.
+
+### each model
 For example, you can use `dirty` as follows
 
 ```html
@@ -174,6 +171,21 @@ For example, you can use `dirty` as follows
 ```
 
 In the above example, the `dirty` keep the per each `v-model`.
+
+### all models
+The `dirty` keep the result of all moedls.
+
+For example, you can use `dirty` as follows
+
+```html
+<form id="user-form">
+    ID: <input type="text" v-model="id" v-validate="required, minLength: 3, maxLength: 16"><br />
+    Password: <input type="password" v-model="password" v-validate="required, minLength: 8 maxLength: 16"><br />
+    <input type="submit" value="send" v-if="valid && dirty">
+</form>
+```
+
+In the above example, the `dirty` keep the all `v-model`.
 
 
 # Directives
@@ -387,6 +399,12 @@ If you did not specify, you can use validation directive name as `v-validate` (d
 $ make test
 ```
 
+# Contributing
+- Fork it !
+- Create your top branch from `dev`: `git branch my-new-topic origin/dev`
+- Commit your changes: `git commit -am 'Add some topic'`
+- Push to the branch: `git push origin my-new-topic`
+- Submit a pull request to `dev` branch of `vuejs/vue-validator` repository !
 
 # TODO
 See the `TODO.md`
