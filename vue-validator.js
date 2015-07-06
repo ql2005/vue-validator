@@ -1,5 +1,5 @@
 /**
- * vue-validator v1.0.7
+ * vue-validator v1.2.0
  * (c) 2014-2015 kazuya kawaguchi
  * Released under the MIT License.
  */
@@ -62,6 +62,7 @@
                 Vue.directive(directiveName, {
                     priority: 1024,
                     bind: function () {
+                        var self = this;
                         var vm = this.vm;
                         if (!vm[componentName]) {
                             vm[componentName] = vm.$addChild({ validator: vm.$options.validator }, Vue.extend(__webpack_require__(1)));
@@ -73,31 +74,46 @@
                         var validator = this.arg ? this.arg : this.expression;
                         var arg = this.arg ? this.expression : null;
                         var init = el.getAttribute('value') || vm.$get(keypath);
-                        if (!getVal($validator[validation], keypath)) {
-                            $validator._defineModelValidationScope(keypath, init);
+                        var readyEvent = el.getAttribute('wait-for');
+                        if (readyEvent && !$validator._isRegistedReadyEvent(keypath)) {
+                            $validator._addReadyEvents(keypath, this._checkParam('wait-for'));
                         }
-                        if (!getVal($validator[validation], keypath + '.' + validator)) {
-                            $validator._defineValidatorToValidationScope(keypath, validator);
-                            $validator._addValidators(keypath, validator, arg);
+                        if (!$validator._isRegistedReadyEvent(keypath)) {
+                            this._setupValidator($validator, keypath, validation, validator, arg, init);
+                        } else {
+                            vm.$once($validator._getReadyEvents(keypath), function (prop, val) {
+                                vm.$set(prop, val);
+                                self._setupValidator($validator, keypath, validation, validator, arg, val);
+                            });
                         }
-                        $validator._addManagedValidator(keypath, validator);
-                        $validator._doValidate(keypath, init, $validator.$get(keypath));
                     },
                     unbind: function () {
                         var vm = this.vm;
                         var keypath = this._keypath;
                         var validator = this.arg ? this.arg : this.expression;
                         var $validator = vm[componentName];
-                        $validator._undefineValidatorToValidationScope(keypath, validator);
                         $validator._deleteManagedValidator(keypath, validator);
+                        $validator._undefineValidatorToValidationScope(keypath, validator);
+                        $validator._undefineModelValidationScope(keypath);
                         if (!$validator._isManagedValidator()) {
-                            for (var key in $validator.validation) {
-                                $validator._undefineModelValidationScope(key);
-                            }
                             $validator.$destroy();
                             vm[componentName] = null;
                             delete vm[componentName];
                         }
+                    },
+                    _setupValidator: function ($validator, keypath, validation, validator, arg, init) {
+                        if (!getVal($validator[validation], keypath)) {
+                            $validator._defineModelValidationScope(keypath, init);
+                        }
+                        if (!getVal($validator[validation], [
+                                keypath,
+                                validator
+                            ].join('.'))) {
+                            $validator._defineValidatorToValidationScope(keypath, validator);
+                            $validator._addValidators(keypath, validator, arg);
+                        }
+                        $validator._addManagedValidator(keypath, validator);
+                        $validator._doValidate(keypath, init, $validator.$get(keypath));
                     },
                     _parseModelAttribute: function (attr) {
                         var res = Vue.parsers.directive.parse(attr);
@@ -142,6 +158,7 @@
                         }
                         this._validatorWatchers = {};
                         this._managedValidator = {};
+                        this._readyEvents = {};
                     },
                     _initOptions: function () {
                         var validator = this.$options.validator = this.$options.validator || {};
@@ -317,7 +334,10 @@
                         });
                     },
                     _watchModel: function (keypath, fn) {
-                        this._validatorWatchers[keypath] = this.$watch(keypath, fn, false, true);
+                        this._validatorWatchers[keypath] = this.$watch(keypath, fn, {
+                            deep: false,
+                            immediate: true
+                        });
                     },
                     _unwatchModel: function (keypath) {
                         var unwatch = this._validatorWatchers[keypath];
@@ -340,6 +360,15 @@
                     },
                     _isManagedValidator: function () {
                         return Object.keys(this._managedValidator).length !== 0;
+                    },
+                    _addReadyEvents: function (id, event) {
+                        this._readyEvents[id] = event;
+                    },
+                    _getReadyEvents: function (id) {
+                        return this._readyEvents[id];
+                    },
+                    _isRegistedReadyEvent: function (id) {
+                        return id in this._readyEvents;
                     },
                     _doValidate: function (keypath, init, val) {
                         var self = this;
@@ -406,7 +435,11 @@
                 if (typeof pat !== 'string') {
                     return false;
                 }
-                var match = pat.match(new RegExp('^/(.*?)/([gimy]*)$'));
+                var quoted = stripQuotes(pat);
+                if (!quoted) {
+                    return false;
+                }
+                var match = quoted.match(new RegExp('^/(.*?)/([gimy]*)$'));
                 if (!match) {
                     return false;
                 }
@@ -422,7 +455,7 @@
 	 * @return {Boolean}
 	 */
             function minLength(val, min) {
-                return typeof val === 'string' && isInteger(min) && val.length >= parseInt(min);
+                return typeof val === 'string' && isInteger(min, 10) && val.length >= parseInt(min, 10);
             }
             /**
 	 * maxLength
@@ -434,7 +467,7 @@
 	 * @return {Boolean}
 	 */
             function maxLength(val, max) {
-                return typeof val === 'string' && isInteger(max) && val.length <= parseInt(max);
+                return typeof val === 'string' && isInteger(max, 10) && val.length <= parseInt(max, 10);
             }
             /**
 	 * min
@@ -471,6 +504,17 @@
 	 */
             function isInteger(val) {
                 return /^(-?[1-9]\d*|0)$/.test(val);
+            }
+            /**
+	 * Strip quotes from a string
+	 *
+	 * @param {String} str
+	 * @return {String | false}
+	 */
+            function stripQuotes(str) {
+                var a = str.charCodeAt(0);
+                var b = str.charCodeAt(str.length - 1);
+                return a === b && (a === 34 || a === 39) ? str.slice(1, -1) : false;
             }
             /**
 	 * export(s)
