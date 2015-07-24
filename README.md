@@ -175,6 +175,8 @@ In the above example, the `dirty` keep the per each `v-model`.
 ### all models
 The `dirty` keep the result of all moedls.
 
+If you has some model properties, when any one property is dirty, it return `true`.
+
 For example, you can use `dirty` as follows
 
 ```html
@@ -192,14 +194,44 @@ In the above example, the `dirty` keep the all `v-model`.
 
 ## v-validate
 - This directive must be used together with `v-model`.
+- This directive accepts a property of viewmodel.
+- Directive params: wait-for
 
 Validate the value of `v-model`. 
 You can specify the build-in validator or custom validator to be described later.
 
-### attributes
+### Reactivity
+You can specify the property of viewmodel as validator reactive argument.
 
-#### wait-for
-Allows initialization of validation to wait for asynchronous data to be loaded.
+For Example:
+
+```html
+<form id="config-form">
+    <input type="text" v-model="threshold" v-validate="min: minValue, max: maxValue">
+</form>
+```
+
+```javascript
+new Vue({
+  data: {
+    threshold: 50,
+    minValue: 0, // for `min` validator
+    maxValue: 100 // for `max` validator
+  },
+  ready: function () {
+    // change validator argument
+    this.$set('min', -50)
+    this.$set('max', 100)
+  }
+}).$mount('#config-form')
+```
+
+> **NOTE:**
+In current version, not support {{ mustache }} expressions.
+
+
+### Lazy initialization
+when you will use `wait-for` attribute, you allows initialization of validation to wait for asynchronous data to be loaded.
 You can specify an event name that is occured by `$emit` at `created`, `compiled` or `ready` hook.
 
 For example:
@@ -207,7 +239,7 @@ For example:
 ```html
 <form id="user-profile">
     name: <input type="text" v-model="name" wait-for="name-loaded" v-validate="required"><br />
-    email: <input type="text" v-model="email" wail-for="email-loaded" v-validate="email"><br />
+    email: <input type="text" v-model="email" wait-for="email-loaded" v-validate="email"><br />
     <input type="submit" value="send" v-if="valid && dirty">
 </form>
 ```
@@ -229,8 +261,8 @@ new Vue({
       // ...
 
       // emit the event that was specified 'wait-for' attribute
-      self.$emit('name-loaded', 'name', data.name)
-      self.$emit('email-loaded', 'email', data.email)
+      self.$emit('name-loaded', data.name)
+      self.$emit('email-loaded', data.email)
 
       // ...
     }).error(function (data, status, request) {
@@ -244,11 +276,10 @@ new Vue({
 `$emit` of interface conventions are as follows:
 
 ```javascript
-    vm.$emit( eventName, propName, propVal ) 
+    vm.$emit( eventName, propVal ) 
 ```
 
 - **eventName**: the event name that was specified with 'wait-for' attribute
-- **propName**: the property name that is initialized of validation
 - **propVal**: the property value that is initialized of validation
 
 
