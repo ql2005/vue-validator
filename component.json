@@ -1,6 +1,6 @@
 {
-    "version": "v1.2.0",
-    "tag": "v1.2.0",
+    "version": "v1.3.3",
+    "tag": "v1.3.3",
     "dependencies": {
         "vue": ">=0.12.0"
     },

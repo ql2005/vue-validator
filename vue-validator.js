@@ -1,5 +1,5 @@
 /**
- * vue-validator v1.2.0
+ * vue-validator v1.3.3
  * (c) 2014-2015 kazuya kawaguchi
  * Released under the MIT License.
  */
@@ -40,6 +40,10 @@
     }([
         function (module, exports, __webpack_require__) {
             /**
+	 * Import(s)
+	 */
+            var validates = __webpack_require__(1);
+            /**
 	 * Export(s)
 	 */
             module.exports = install;
@@ -51,6 +55,7 @@
                 var componentName = options.component = options.component || '$validator';
                 var directiveName = options.directive = options.directive || 'validate';
                 var path = Vue.parsers.path;
+                var utils = Vue.util;
                 function getVal(obj, keypath) {
                     var ret = null;
                     try {
@@ -62,343 +67,91 @@
                 Vue.directive(directiveName, {
                     priority: 1024,
                     bind: function () {
-                        var self = this;
                         var vm = this.vm;
-                        if (!vm[componentName]) {
-                            vm[componentName] = vm.$addChild({ validator: vm.$options.validator }, Vue.extend(__webpack_require__(1)));
-                        }
-                        var $validator = vm[componentName];
                         var el = this.el;
-                        var validation = $validator._getValidationNamespace('validation');
+                        var $validator = vm[componentName];
                         var keypath = this._keypath = this._parseModelAttribute(el.getAttribute(Vue.config.prefix + 'model'));
                         var validator = this.arg ? this.arg : this.expression;
                         var arg = this.arg ? this.expression : null;
+                        var customs = vm.$options.validator && vm.$options.validator.validates || {};
+                        if (!this._checkDirective(validator, validates, customs)) {
+                            utils.warn('specified invalid v-validate directive !! please check v-validator directive !!');
+                            this._ignore = true;
+                            return;
+                        }
+                        if (!$validator) {
+                            vm[componentName] = $validator = vm.$addChild({ validator: vm.$options.validator }, Vue.extend(__webpack_require__(2)));
+                        }
+                        var validation = $validator._getValidationNamespace('validation');
                         var init = el.getAttribute('value') || vm.$get(keypath);
                         var readyEvent = el.getAttribute('wait-for');
                         if (readyEvent && !$validator._isRegistedReadyEvent(keypath)) {
                             $validator._addReadyEvents(keypath, this._checkParam('wait-for'));
                         }
-                        if (!$validator._isRegistedReadyEvent(keypath)) {
-                            this._setupValidator($validator, keypath, validation, validator, arg, init);
-                        } else {
-                            vm.$once($validator._getReadyEvents(keypath), function (prop, val) {
-                                vm.$set(prop, val);
-                                self._setupValidator($validator, keypath, validation, validator, arg, val);
-                            });
-                        }
+                        this._setupValidator($validator, keypath, validation, validator, arg, init);
                     },
-                    unbind: function () {
+                    update: function (val, old) {
+                        if (this._ignore) {
+                            return;
+                        }
                         var vm = this.vm;
                         var keypath = this._keypath;
                         var validator = this.arg ? this.arg : this.expression;
                         var $validator = vm[componentName];
-                        $validator._deleteManagedValidator(keypath, validator);
-                        $validator._undefineValidatorToValidationScope(keypath, validator);
-                        $validator._undefineModelValidationScope(keypath);
-                        if (!$validator._isManagedValidator()) {
-                            $validator.$destroy();
-                            vm[componentName] = null;
-                            delete vm[componentName];
+                        $validator._changeValidator(keypath, validator, val);
+                        if (!$validator._isRegistedReadyEvent(keypath)) {
+                            // normal
+                            $validator._updateDirtyProperty(keypath, $validator.$get(keypath));
+                            $validator._doValidate(keypath, validator, $validator.$get(keypath));
+                        } else {
+                            // wait-for
+                            vm.$once($validator._getReadyEvents(keypath), function (val) {
+                                $validator._setInitialValue(keypath, val);
+                                vm.$set(keypath, val);
+                                $validator._updateDirtyProperty(keypath, $validator.$get(keypath));
+                                $validator._doValidate(keypath, validator, $validator.$get(keypath));
+                            });
                         }
                     },
+                    unbind: function () {
+                        if (this._ignore) {
+                            return;
+                        }
+                        var vm = this.vm;
+                        var keypath = this._keypath;
+                        var validator = this.arg ? this.arg : this.expression;
+                        var $validator = vm[componentName];
+                        this._teardownValidator(vm, $validator, keypath, validator);
+                    },
+                    _parseModelAttribute: function (attr) {
+                        var res = Vue.parsers.directive.parse(attr);
+                        return res[0].arg ? res[0].arg : res[0].expression;
+                    },
+                    _checkDirective: function (validator, validates, customs) {
+                        var items = Object.keys(validates).concat(Object.keys(customs));
+                        return items.some(function (item) {
+                            return item === validator;
+                        });
+                    },
                     _setupValidator: function ($validator, keypath, validation, validator, arg, init) {
+                        var vm = this.vm;
                         if (!getVal($validator[validation], keypath)) {
-                            $validator._defineModelValidationScope(keypath, init);
+                            $validator._defineModelValidationScope(keypath);
+                            $validator._setInitialValue(keypath, init);
                         }
                         if (!getVal($validator[validation], [
                                 keypath,
                                 validator
                             ].join('.'))) {
                             $validator._defineValidatorToValidationScope(keypath, validator);
-                            $validator._addValidators(keypath, validator, arg);
+                            $validator._addValidator(keypath, validator, getVal(vm, arg) || arg);
                         }
-                        $validator._addManagedValidator(keypath, validator);
-                        $validator._doValidate(keypath, init, $validator.$get(keypath));
                     },
-                    _parseModelAttribute: function (attr) {
-                        var res = Vue.parsers.directive.parse(attr);
-                        return res[0].arg ? res[0].arg : res[0].expression;
+                    _teardownValidator: function (vm, $validator, keypath, validator) {
+                        $validator._undefineValidatorToValidationScope(keypath, validator);
+                        $validator._undefineModelValidationScope(keypath, validator);
                     }
                 });
-            }
-        },
-        function (module, exports, __webpack_require__) {
-            /**
-	 * Import(s)
-	 */
-            var validates = __webpack_require__(2);
-            /**
-	 * Export(s)
-	 */
-            /**
-	 * `v-validator` component with mixin
-	 */
-            module.exports = {
-                inherit: true,
-                created: function () {
-                    this._initValidationVariables();
-                    this._initOptions();
-                    this._mixinCustomValidates();
-                    this._defineProperties();
-                    this._defineValidationScope();
-                },
-                beforeDestroy: function () {
-                    this._undefineProperties();
-                    this._undefineValidationScope();
-                },
-                methods: {
-                    _getValidationNamespace: function (key) {
-                        return this.$options.validator.namespace[key];
-                    },
-                    _initValidationVariables: function () {
-                        this._validators = {};
-                        this._validates = {};
-                        for (var key in validates) {
-                            this._validates[key] = validates[key];
-                        }
-                        this._validatorWatchers = {};
-                        this._managedValidator = {};
-                        this._readyEvents = {};
-                    },
-                    _initOptions: function () {
-                        var validator = this.$options.validator = this.$options.validator || {};
-                        var namespace = validator.namespace = validator.namespace || {};
-                        namespace.validation = namespace.validation || 'validation';
-                        namespace.valid = namespace.valid || 'valid';
-                        namespace.invalid = namespace.invalid || 'invalid';
-                        namespace.dirty = namespace.dirty || 'dirty';
-                    },
-                    _mixinCustomValidates: function () {
-                        var customs = this.$options.validator.validates;
-                        for (var key in customs) {
-                            this._validates[key] = customs[key];
-                        }
-                    },
-                    _defineValidProperty: function (target, getter) {
-                        Object.defineProperty(target, this._getValidationNamespace('valid'), {
-                            enumerable: true,
-                            configurable: true,
-                            get: getter
-                        });
-                    },
-                    _undefineValidProperty: function (target) {
-                        delete target[this._getValidationNamespace('valid')];
-                    },
-                    _defineInvalidProperty: function (target) {
-                        var self = this;
-                        Object.defineProperty(target, this._getValidationNamespace('invalid'), {
-                            enumerable: true,
-                            configurable: true,
-                            get: function () {
-                                return !target[self._getValidationNamespace('valid')];
-                            }
-                        });
-                    },
-                    _undefineInvalidProperty: function (target) {
-                        delete target[this._getValidationNamespace('invalid')];
-                    },
-                    _defineDirtyProperty: function (target, getter) {
-                        Object.defineProperty(target, this._getValidationNamespace('dirty'), {
-                            enumerable: true,
-                            configurable: true,
-                            get: getter
-                        });
-                    },
-                    _undefineDirtyProperty: function (target) {
-                        delete target[this._getValidationNamespace('dirty')];
-                    },
-                    _defineProperties: function () {
-                        var self = this;
-                        var walk = function (obj, propName, namespaces) {
-                            var ret = true;
-                            var keys = Object.keys(obj);
-                            var i = keys.length;
-                            var key, last;
-                            while (i--) {
-                                key = keys[i];
-                                last = obj[key];
-                                if (!(key in namespaces) && typeof last === 'object') {
-                                    ret = walk(last, propName, namespaces);
-                                    if (!ret) {
-                                        break;
-                                    }
-                                } else if (key === propName && typeof last !== 'object') {
-                                    ret = last;
-                                    if (!ret) {
-                                        break;
-                                    }
-                                }
-                            }
-                            return ret;
-                        };
-                        this._defineValidProperty(this.$parent, function () {
-                            var validationName = self._getValidationNamespace('validation');
-                            var validName = self._getValidationNamespace('valid');
-                            var namespaces = self.$options.validator.namespace;
-                            return walk(this[validationName], validName, namespaces);
-                        });
-                        this._defineInvalidProperty(this.$parent);
-                        this._defineDirtyProperty(this.$parent, function () {
-                            var validationName = self._getValidationNamespace('validation');
-                            var dirtyName = self._getValidationNamespace('dirty');
-                            var namespaces = self.$options.validator.namespace;
-                            return walk(this[validationName], dirtyName, namespaces);
-                        });
-                    },
-                    _undefineProperties: function () {
-                        this._undefineDirtyProperty(this.$parent);
-                        this._undefineInvalidProperty(this.$parent);
-                        this._undefineValidProperty(this.$parent);
-                    },
-                    _defineValidationScope: function () {
-                        this.$parent.$add(this._getValidationNamespace('validation'), {});
-                    },
-                    _undefineValidationScope: function () {
-                        this.$parent.$delete(this._getValidationNamespace('validation'));
-                    },
-                    _defineModelValidationScope: function (keypath, init) {
-                        var self = this;
-                        var validationName = this._getValidationNamespace('validation');
-                        var dirtyName = this._getValidationNamespace('dirty');
-                        var keys = keypath.split('.');
-                        var last = this[validationName];
-                        var obj, key;
-                        for (var i = 0; i < keys.length; i++) {
-                            key = keys[i];
-                            obj = last[key];
-                            if (!obj) {
-                                obj = {};
-                                last.$add(key, obj);
-                            }
-                            last = obj;
-                        }
-                        last.$add(dirtyName, false);
-                        this._defineValidProperty(last, function () {
-                            var ret = true;
-                            var validators = self._validators[keypath];
-                            var i = validators.length;
-                            var validator;
-                            while (i--) {
-                                validator = validators[i];
-                                if (last[validator.name]) {
-                                    ret = false;
-                                    break;
-                                }
-                            }
-                            return ret;
-                        });
-                        this._defineInvalidProperty(last);
-                        this._validators[keypath] = [];
-                        this._watchModel(keypath, function (val, old) {
-                            self._doValidate(keypath, init, val);
-                        });
-                    },
-                    _undefineModelValidationScope: function (keypath) {
-                        if (this.$parent) {
-                            var targetPath = [
-                                this._getValidationNamespace('validation'),
-                                keypath
-                            ].join('.');
-                            var target = this.$parent.$get(targetPath);
-                            if (target) {
-                                this._unwatchModel(keypath);
-                                this._undefineDirtyProperty(target);
-                                this._undefineInvalidProperty(target);
-                                this._undefineValidProperty(target);
-                                var validation = this.$parent.$get(this._getValidationNamespace('validation'));
-                                validation.$delete(keypath);
-                            }
-                        }
-                    },
-                    _defineValidatorToValidationScope: function (keypath, validator) {
-                        var target = getTarget(this[this._getValidationNamespace('validation')], keypath);
-                        target.$add(validator, null);
-                    },
-                    _undefineValidatorToValidationScope: function (keypath, validator) {
-                        var validationName = this._getValidationNamespace('validation');
-                        if (this.$parent) {
-                            var targetPath = [
-                                validationName,
-                                keypath
-                            ].join('.');
-                            var target = this.$parent.$get(targetPath);
-                            if (target) {
-                                target.$delete(validator);
-                            }
-                        }
-                    },
-                    _addValidators: function (keypath, validator, arg) {
-                        this._validators[keypath].push({
-                            name: validator,
-                            arg: arg
-                        });
-                    },
-                    _watchModel: function (keypath, fn) {
-                        this._validatorWatchers[keypath] = this.$watch(keypath, fn, {
-                            deep: false,
-                            immediate: true
-                        });
-                    },
-                    _unwatchModel: function (keypath) {
-                        var unwatch = this._validatorWatchers[keypath];
-                        unwatch();
-                        delete this._validatorWatchers[keypath];
-                    },
-                    _addManagedValidator: function (keypath, validator) {
-                        this._managedValidator[[
-                            keypath,
-                            validator
-                        ].join('.')] = true;
-                    },
-                    _deleteManagedValidator: function (keypath, validator) {
-                        var key = [
-                            keypath,
-                            validator
-                        ].join('.');
-                        this._managedValidator[key] = null;
-                        delete this._managedValidator[key];
-                    },
-                    _isManagedValidator: function () {
-                        return Object.keys(this._managedValidator).length !== 0;
-                    },
-                    _addReadyEvents: function (id, event) {
-                        this._readyEvents[id] = event;
-                    },
-                    _getReadyEvents: function (id) {
-                        return this._readyEvents[id];
-                    },
-                    _isRegistedReadyEvent: function (id) {
-                        return id in this._readyEvents;
-                    },
-                    _doValidate: function (keypath, init, val) {
-                        var self = this;
-                        var validationName = this._getValidationNamespace('validation');
-                        var dirtyName = this._getValidationNamespace('dirty');
-                        var target = getTarget(this[validationName], keypath);
-                        target[dirtyName] = init !== val;
-                        this._validators[keypath].forEach(function (validator) {
-                            target[validator.name] = !self._validates[validator.name].call(self, val, validator.arg);
-                        });
-                    }
-                }
-            };
-            /**
-	 * Get target validatable object
-	 *
-	 * @param {Object} validation
-	 * @param {String} keypath
-	 * @return {Object} validatable object
-	 */
-            function getTarget(validation, keypath) {
-                var last = validation;
-                var keys = keypath.split('.');
-                var key, obj;
-                for (var i = 0; i < keys.length; i++) {
-                    key = keys[i];
-                    obj = last[key];
-                    last = obj;
-                }
-                return last;
             }
         },
         function (module, exports) {
@@ -416,6 +169,8 @@
             function required(val) {
                 if (Array.isArray(val)) {
                     return val.length > 0;
+                } else if (typeof val === 'number') {
+                    return true;
                 } else if (val !== null && typeof val === 'object') {
                     return Object.keys(val).length > 0;
                 } else {
@@ -435,11 +190,7 @@
                 if (typeof pat !== 'string') {
                     return false;
                 }
-                var quoted = stripQuotes(pat);
-                if (!quoted) {
-                    return false;
-                }
-                var match = quoted.match(new RegExp('^/(.*?)/([gimy]*)$'));
+                var match = pat.match(new RegExp('^/(.*?)/([gimy]*)$'));
                 if (!match) {
                     return false;
                 }
@@ -506,17 +257,6 @@
                 return /^(-?[1-9]\d*|0)$/.test(val);
             }
             /**
-	 * Strip quotes from a string
-	 *
-	 * @param {String} str
-	 * @return {String | false}
-	 */
-            function stripQuotes(str) {
-                var a = str.charCodeAt(0);
-                var b = str.charCodeAt(str.length - 1);
-                return a === b && (a === 34 || a === 39) ? str.slice(1, -1) : false;
-            }
-            /**
 	 * export(s)
 	 */
             module.exports = {
@@ -527,6 +267,320 @@
                 min: min,
                 max: max
             };
+        },
+        function (module, exports, __webpack_require__) {
+            /**
+	 * Import(s)
+	 */
+            var validates = __webpack_require__(1);
+            /**
+	 * Export(s)
+	 */
+            /**
+	 * `v-validator` component with mixin
+	 */
+            module.exports = {
+                inherit: true,
+                created: function () {
+                    this._initValidationVariables();
+                    this._initOptions();
+                    this._mixinCustomValidates();
+                    this._defineProperties();
+                    this._defineValidationScope();
+                },
+                methods: {
+                    _getValidationNamespace: function (key) {
+                        return this.$options.validator.namespace[key];
+                    },
+                    _initValidationVariables: function () {
+                        this._validators = {};
+                        this._validates = {};
+                        this._initialValues = {};
+                        for (var key in validates) {
+                            this._validates[key] = validates[key];
+                        }
+                        this._validatorWatchers = {};
+                        this._readyEvents = {};
+                    },
+                    _initOptions: function () {
+                        var validator = this.$options.validator = this.$options.validator || {};
+                        var namespace = validator.namespace = validator.namespace || {};
+                        namespace.validation = namespace.validation || 'validation';
+                        namespace.valid = namespace.valid || 'valid';
+                        namespace.invalid = namespace.invalid || 'invalid';
+                        namespace.dirty = namespace.dirty || 'dirty';
+                    },
+                    _mixinCustomValidates: function () {
+                        var customs = this.$options.validator.validates;
+                        for (var key in customs) {
+                            this._validates[key] = customs[key];
+                        }
+                    },
+                    _defineValidProperty: function (target, getter) {
+                        Object.defineProperty(target, this._getValidationNamespace('valid'), {
+                            enumerable: true,
+                            configurable: true,
+                            get: getter
+                        });
+                    },
+                    _undefineValidProperty: function (target) {
+                        delete target[this._getValidationNamespace('valid')];
+                    },
+                    _defineInvalidProperty: function (target) {
+                        var self = this;
+                        Object.defineProperty(target, this._getValidationNamespace('invalid'), {
+                            enumerable: true,
+                            configurable: true,
+                            get: function () {
+                                return !target[self._getValidationNamespace('valid')];
+                            }
+                        });
+                    },
+                    _undefineInvalidProperty: function (target) {
+                        delete target[this._getValidationNamespace('invalid')];
+                    },
+                    _defineDirtyProperty: function (target, getter) {
+                        Object.defineProperty(target, this._getValidationNamespace('dirty'), {
+                            enumerable: true,
+                            configurable: true,
+                            get: getter
+                        });
+                    },
+                    _undefineDirtyProperty: function (target) {
+                        delete target[this._getValidationNamespace('dirty')];
+                    },
+                    _defineProperties: function () {
+                        var self = this;
+                        var walk = function (obj, propName, namespaces) {
+                            var ret = false;
+                            var keys = Object.keys(obj);
+                            var i = keys.length;
+                            var key, last;
+                            while (i--) {
+                                key = keys[i];
+                                last = obj[key];
+                                if (!(key in namespaces) && typeof last === 'object') {
+                                    ret = walk(last, propName, namespaces);
+                                    if (propName === self._getValidationNamespace('valid') && !ret || propName === self._getValidationNamespace('dirty') && ret) {
+                                        break;
+                                    }
+                                } else if (key === propName && typeof last !== 'object') {
+                                    ret = last;
+                                    if (key === self._getValidationNamespace('valid') && !ret || key === self._getValidationNamespace('dirty') && ret) {
+                                        break;
+                                    }
+                                }
+                            }
+                            return ret;
+                        };
+                        this._defineValidProperty(this.$parent, function () {
+                            var validationName = self._getValidationNamespace('validation');
+                            var validName = self._getValidationNamespace('valid');
+                            var namespaces = self.$options.validator.namespace;
+                            return walk(this[validationName], validName, namespaces);
+                        });
+                        this._defineInvalidProperty(this.$parent);
+                        this._defineDirtyProperty(this.$parent, function () {
+                            var validationName = self._getValidationNamespace('validation');
+                            var dirtyName = self._getValidationNamespace('dirty');
+                            var namespaces = self.$options.validator.namespace;
+                            return walk(this[validationName], dirtyName, namespaces);
+                        });
+                    },
+                    _undefineProperties: function () {
+                        this._undefineDirtyProperty(this.$parent);
+                        this._undefineInvalidProperty(this.$parent);
+                        this._undefineValidProperty(this.$parent);
+                    },
+                    _defineValidationScope: function () {
+                        this.$parent.$add(this._getValidationNamespace('validation'), {});
+                    },
+                    _undefineValidationScope: function () {
+                        var validationName = this._getValidationNamespace('validation');
+                        this.$parent.$delete(validationName);
+                    },
+                    _defineModelValidationScope: function (keypath) {
+                        var self = this;
+                        var validationName = this._getValidationNamespace('validation');
+                        var dirtyName = this._getValidationNamespace('dirty');
+                        var keys = keypath.split('.');
+                        var last = this[validationName];
+                        var obj, key;
+                        for (var i = 0; i < keys.length; i++) {
+                            key = keys[i];
+                            obj = last[key];
+                            if (!obj) {
+                                obj = {};
+                                last.$add(key, obj);
+                            }
+                            last = obj;
+                        }
+                        last.$add(dirtyName, false);
+                        this._defineValidProperty(last, function () {
+                            var ret = true;
+                            var validators = self._validators[keypath];
+                            var i = validators.length;
+                            var validator;
+                            while (i--) {
+                                validator = validators[i];
+                                if (last[validator.name]) {
+                                    ret = false;
+                                    break;
+                                }
+                            }
+                            return ret;
+                        });
+                        this._defineInvalidProperty(last);
+                        this._validators[keypath] = [];
+                        this._watchModel(keypath, function (val, old) {
+                            self._updateDirtyProperty(keypath, val);
+                            self._validators[keypath].forEach(function (validator) {
+                                self._doValidate(keypath, validator.name, val);
+                            });
+                        });
+                    },
+                    _undefineModelValidationScope: function (keypath, validator) {
+                        if (this.$parent) {
+                            var targetPath = [
+                                this._getValidationNamespace('validation'),
+                                keypath
+                            ].join('.');
+                            var target = this.$parent.$get(targetPath);
+                            if (target && Object.keys(target).length === 3 && this._getValidationNamespace('valid') in target && this._getValidationNamespace('invalid') in target && this._getValidationNamespace('dirty') in target) {
+                                this._unwatchModel(keypath);
+                                this._undefineDirtyProperty(target);
+                                this._undefineInvalidProperty(target);
+                                this._undefineValidProperty(target);
+                                removeValidationProperties(this.$parent.$get(this._getValidationNamespace('validation')), keypath);
+                            }
+                        }
+                    },
+                    _defineValidatorToValidationScope: function (keypath, validator) {
+                        var target = getTarget(this[this._getValidationNamespace('validation')], keypath);
+                        target.$add(validator, null);
+                    },
+                    _undefineValidatorToValidationScope: function (keypath, validator) {
+                        var validationName = this._getValidationNamespace('validation');
+                        if (this.$parent) {
+                            var targetPath = [
+                                validationName,
+                                keypath
+                            ].join('.');
+                            var target = this.$parent.$get(targetPath);
+                            if (target) {
+                                target.$delete(validator);
+                            }
+                        }
+                    },
+                    _getInitialValue: function (keypath) {
+                        return this._initialValues[keypath];
+                    },
+                    _setInitialValue: function (keypath, val) {
+                        this._initialValues[keypath] = val;
+                    },
+                    _addValidator: function (keypath, validator, arg) {
+                        this._validators[keypath].push({
+                            name: validator,
+                            arg: arg
+                        });
+                    },
+                    _changeValidator: function (keypath, validator, arg) {
+                        var validators = this._validators[keypath];
+                        var i = validators.length;
+                        while (i--) {
+                            if (validators[i].name === validator) {
+                                validators[i].arg = arg;
+                                break;
+                            }
+                        }
+                    },
+                    _findValidator: function (keypath, validator) {
+                        var found = null;
+                        var validators = this._validators[keypath];
+                        var i = validators.length;
+                        while (i--) {
+                            if (validators[i].name === validator) {
+                                found = validators[i];
+                                break;
+                            }
+                        }
+                        return found;
+                    },
+                    _watchModel: function (keypath, fn) {
+                        this._validatorWatchers[keypath] = this.$watch(keypath, fn, {
+                            deep: false,
+                            immediate: true
+                        });
+                    },
+                    _unwatchModel: function (keypath) {
+                        var unwatch = this._validatorWatchers[keypath];
+                        if (unwatch) {
+                            unwatch();
+                            delete this._validatorWatchers[keypath];
+                        }
+                    },
+                    _addReadyEvents: function (id, event) {
+                        this._readyEvents[id] = event;
+                    },
+                    _getReadyEvents: function (id) {
+                        return this._readyEvents[id];
+                    },
+                    _isRegistedReadyEvent: function (id) {
+                        return id in this._readyEvents;
+                    },
+                    _updateDirtyProperty: function (keypath, val) {
+                        var validationName = this._getValidationNamespace('validation');
+                        var dirtyName = this._getValidationNamespace('dirty');
+                        var target = getTarget(this[validationName], keypath);
+                        target.$set(dirtyName, this._getInitialValue(keypath) !== val);
+                    },
+                    _doValidate: function (keypath, validateName, val) {
+                        var validationName = this._getValidationNamespace('validation');
+                        var target = getTarget(this[validationName], keypath);
+                        var validator = this._findValidator(keypath, validateName);
+                        if (validator) {
+                            target.$set(validateName, !this._validates[validateName].call(this, val, validator.arg));
+                        }
+                    }
+                }
+            };
+            /**
+	 * Get target validatable object
+	 *
+	 * @param {Object} validation
+	 * @param {String} keypath
+	 * @return {Object} validatable object
+	 */
+            function getTarget(validation, keypath) {
+                var last = validation;
+                var keys = keypath.split('.');
+                var key, obj;
+                for (var i = 0; i < keys.length; i++) {
+                    key = keys[i];
+                    obj = last[key];
+                    last = obj;
+                }
+                return last;
+            }
+            /**
+	 * Remove properties from target validation
+	 *
+	 * @param {Object} validation
+	 * @param {String} keypath
+	 */
+            function removeValidationProperties(validation, keypath) {
+                var keys = keypath.split('.');
+                var key, obj;
+                while (keys.length) {
+                    key = keys.pop();
+                    if (keys.length !== 0) {
+                        obj = getTarget(validation, keys.join('.'));
+                        obj.$delete(key);
+                    } else {
+                        validation.$delete(key);
+                    }
+                }
+            }
         }
     ]);
 }));
