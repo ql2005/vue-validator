@@ -1,5 +1,5 @@
 /**
- * vue-validator v1.3.3
+ * vue-validator v1.4.1
  * (c) 2014-2015 kazuya kawaguchi
  * Released under the MIT License.
  */
@@ -43,6 +43,7 @@
 	 * Import(s)
 	 */
             var validates = __webpack_require__(1);
+            var _ = __webpack_require__(2);
             /**
 	 * Export(s)
 	 */
@@ -55,7 +56,6 @@
                 var componentName = options.component = options.component || '$validator';
                 var directiveName = options.directive = options.directive || 'validate';
                 var path = Vue.parsers.path;
-                var utils = Vue.util;
                 function getVal(obj, keypath) {
                     var ret = null;
                     try {
@@ -75,12 +75,12 @@
                         var arg = this.arg ? this.expression : null;
                         var customs = vm.$options.validator && vm.$options.validator.validates || {};
                         if (!this._checkDirective(validator, validates, customs)) {
-                            utils.warn('specified invalid v-validate directive !! please check v-validator directive !!');
+                            _.warn('specified invalid v-validate directive !! please check v-validator directive !!');
                             this._ignore = true;
                             return;
                         }
                         if (!$validator) {
-                            vm[componentName] = $validator = vm.$addChild({ validator: vm.$options.validator }, Vue.extend(__webpack_require__(2)));
+                            vm[componentName] = $validator = vm.$addChild({ validator: vm.$options.validator }, Vue.extend(__webpack_require__(3)));
                         }
                         var validation = $validator._getValidationNamespace('validation');
                         var init = el.getAttribute('value') || vm.$get(keypath);
@@ -266,6 +266,26 @@
                 maxLength: maxLength,
                 min: min,
                 max: max
+            };
+        },
+        function (module, exports) {
+            /**
+	 * Utilties
+	 */
+            /**
+	 * warn
+	 *
+	 * @param {String} msg
+	 * @param {Error} [err]
+	 *
+	 */
+            exports.warn = function (msg, err) {
+                if (window.console) {
+                    console.warn('[vue-validator] ' + msg);
+                    if (err) {
+                        console.warn(err.stack);
+                    }
+                }
             };
         },
         function (module, exports, __webpack_require__) {
@@ -539,7 +559,36 @@
                         var target = getTarget(this[validationName], keypath);
                         var validator = this._findValidator(keypath, validateName);
                         if (validator) {
-                            target.$set(validateName, !this._validates[validateName].call(this, val, validator.arg));
+                            this._invokeValidator(this._validates[validateName], val, validator.arg, function (result) {
+                                target.$set(validateName, !result);
+                            });
+                        }
+                    },
+                    _invokeValidator: function (validator, val, arg, fn) {
+                        var future = validator.call(this, val, arg);
+                        if (typeof future === 'function') {
+                            // async
+                            if (future.resolved) {
+                                // cached
+                                fn(future.resolved);
+                            } else if (future.requested) {
+                                // pool callbacks
+                                future.pendingCallbacks.push(fn);
+                            } else {
+                                future.requested = true;
+                                var fns = future.pendingCallbacks = [fn];
+                                future(function resolve() {
+                                    future.resolved = true;
+                                    for (var i = 0, l = fns.length; i < l; i++) {
+                                        fns[i](true);
+                                    }
+                                }, function reject() {
+                                    fn(false);
+                                });
+                            }
+                        } else {
+                            // sync
+                            fn(future);
                         }
                     }
                 }

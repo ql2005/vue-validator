@@ -48,12 +48,12 @@ The following is an example.
 
 ```html
 <form id="blog-form">
-    <input type="text" v-model="comment" v-validate="minLength: 16, maxLength: 128">
-    <div>
-        <span v-show="validation.comment.minLength">Your comment is too short.</span>
-        <span v-show="validation.comment.maxLength">Your comment is too long.</span>
-    </div>
-    <input type="submit" value="send" v-if="valid">
+  <input type="text" v-model="comment" v-validate="minLength: 16, maxLength: 128">
+  <div>
+    <span v-show="validation.comment.minLength">Your comment is too short.</span>
+    <span v-show="validation.comment.maxLength">Your comment is too long.</span>
+  </div>
+  <input type="submit" value="send" v-if="valid">
 </form>
 ```
 
@@ -75,10 +75,10 @@ For example, if you use `required` validator on the password `v-model`, as follo
 
 ```html
 <form id="user-form">
-    Password: <input type="password" v-model="password" v-validate="required"><br />
-    <div>
-        <span v-if="validation.password.required">required your password.</span>
-    </div>
+  Password: <input type="password" v-model="password" v-validate="required"><br />
+  <div>
+    <span v-if="validation.password.required">required your password.</span>
+  </div>
 </form>
 ```
 
@@ -96,17 +96,17 @@ For example, you can use `valid` as follows
 
 ```html
 <form id="user-form">
-    ID: <input type="text" v-model="id" v-validate="required, minLength: 3, maxLength: 16"><br />
-    Password: <input type="password" v-model="password" v-validate="required, minLength: 8, maxLength: 16"><br />
-    <input type="submit" value="send" v-if="valid">
-    <div>
-        <span v-if="validation.id.required">Your ID is required.</span>
-        <span v-if="validation.id.minLength && id">Your ID is too short.</span>
-        <span v-if="validation.id.maxLength">Your ID is too long.</span>
-        <span v-if="validation.password.required">Password is required.</span>
-        <span v-if="validation.password.minLength && password">Your password is too short.</span>
-        <span v-if="validation.password.maxLength">Your password is too long.</span>
-    </div>
+  ID: <input type="text" v-model="id" v-validate="required, minLength: 3, maxLength: 16"><br />
+  Password: <input type="password" v-model="password" v-validate="required, minLength: 8, maxLength: 16"><br />
+  <input type="submit" value="send" v-if="valid">
+  <div>
+    <span v-if="validation.id.required">Your ID is required.</span>
+    <span v-if="validation.id.minLength && id">Your ID is too short.</span>
+    <span v-if="validation.id.maxLength">Your ID is too long.</span>
+    <span v-if="validation.password.required">Password is required.</span>
+    <span v-if="validation.password.minLength && password">Your password is too short.</span>
+    <span v-if="validation.password.maxLength">Your password is too long.</span>
+  </div>
 </form>
 ```
 
@@ -117,19 +117,19 @@ For example, you can use `valid` as follows
 
 ```html
 <form id="user-form">
-    <div v-class="error: validation.id.valid">
-        ID: <input type="text" v-model="id" v-validate="required, minLength: 3, maxLength: 16"><br />
-        <span v-if="validation.id.required">required your ID.</span>
-        <span v-if="validation.id.minLength">too short your ID.</span>
-        <span v-if="validation.id.maxLength">too long your ID.</span>
-    </div>
-    <div v-class="error: validation.password.valid">
-        Password: <input type="password" v-model="password" v-validate="required, minLength: 8 maxLength: 16"><br />
-        <span v-if="validation.password.required">required your password.</span>
-        <span v-if="validation.password.minLength">too short your password.</span>
-        <span v-if="validation.password.maxLength">too long your password.</span>
-    </div>
-    <input type="submit" value="send" v-if="valid">
+  <div v-class="error: validation.id.valid">
+    ID: <input type="text" v-model="id" v-validate="required, minLength: 3, maxLength: 16"><br />
+    <span v-if="validation.id.required">required your ID.</span>
+    <span v-if="validation.id.minLength">too short your ID.</span>
+    <span v-if="validation.id.maxLength">too long your ID.</span>
+  </div>
+  <div v-class="error: validation.password.valid">
+    Password: <input type="password" v-model="password" v-validate="required, minLength: 8 maxLength: 16"><br />
+    <span v-if="validation.password.required">required your password.</span>
+    <span v-if="validation.password.minLength">too short your password.</span>
+    <span v-if="validation.password.maxLength">too long your password.</span>
+  </div>
+  <input type="submit" value="send" v-if="valid">
 </form>
 ```
 
@@ -163,10 +163,10 @@ For example, you can use `dirty` as follows
 
 ```html
 <form id="blog-form">
-    <input type="text" value="hello" v-model="comment" v-validate="maxLength: 128">
-    <div>
-        <span v-if="validation.comment.valid && validation.comment.dirty">your comment OK !!</span>
-    </div>
+  <input type="text" value="hello" v-model="comment" v-validate="maxLength: 128">
+  <div>
+    <span v-if="validation.comment.valid && validation.comment.dirty">your comment OK !!</span>
+  </div>
 </form>
 ```
 
@@ -181,9 +181,9 @@ For example, you can use `dirty` as follows
 
 ```html
 <form id="user-form">
-    ID: <input type="text" v-model="id" v-validate="required, minLength: 3, maxLength: 16"><br />
-    Password: <input type="password" v-model="password" v-validate="required, minLength: 8 maxLength: 16"><br />
-    <input type="submit" value="send" v-if="valid && dirty">
+  ID: <input type="text" v-model="id" v-validate="required, minLength: 3, maxLength: 16"><br />
+  Password: <input type="password" v-model="password" v-validate="required, minLength: 8 maxLength: 16"><br />
+  <input type="submit" value="send" v-if="valid && dirty">
 </form>
 ```
 
@@ -201,13 +201,13 @@ Validate the value of `v-model`.
 You can specify the build-in validator or custom validator to be described later.
 
 ### Reactivity
-You can specify the property of viewmodel as validator reactive argument.
+You can specify the property of viewmodel as validator reactive argument to expression of directive.
 
 For Example:
 
 ```html
 <form id="config-form">
-    <input type="text" v-model="threshold" v-validate="min: minValue, max: maxValue">
+  <input type="text" v-model="threshold" v-validate="min: minValue, max: maxValue">
 </form>
 ```
 
@@ -229,6 +229,81 @@ new Vue({
 > **NOTE:**
 In current version, not support {{ mustache }} expressions.
 
+Of course, you can specify computed properties and method that was defined `methods` in Vue instance.
+
+The following is an example that using a custom validator:
+
+```html
+<style>.error { border: solid #ff0000; }</style>
+<form id="demo">
+  <label for="response">How do you want to respond ?</label>
+  <input id="response_approve" 
+         checked="checked" 
+         name="response" 
+         type="radio" 
+         value="approve" 
+         v-model="response">
+  <label for="response_approve">approve</label>
+  <input id="response_decline" 
+         name="response" 
+         type="radio" 
+         value="decline" 
+         v-model="response">
+  <label for="response_decline">decline</label>
+  
+  <div v-show="conditionalField(response, 'approve')" 
+       v-class="error: validation.message.approve.invalid">
+    <label for="approved_message">Approved message</label>
+    <input type="text" 
+           id="approved_message" 
+           name="approved_message" 
+           v-model="message.approve" 
+           v-validate="requiredIf: conditionalField(response, 'approve'), maxLength: 100">
+  </div>
+  
+  <div v-show="conditionalField(response, 'decline')" 
+       v-class="error: validation.message.decline.invalid">
+    <label for="declined_message">Declined message</label>
+    <input type="text" 
+           id="declined_message" 
+           name="declined_message" 
+           v-model="message.decline" 
+           v-validate="requiredIf: conditionalField(response, 'decline'), maxLength: 100">
+  </div>
+      
+  <div><input type="submit" v-if="validFiled"></div>
+</form>
+```
+
+```javascript
+new Vue({
+  data: {
+    response: '',
+    message: {
+      approve: '',
+      decline: ''
+    }
+  },
+  computed: {
+    validFiled: function () {
+      return this.validation.message.approve.valid ||
+             this.validation.message.decline.valid
+    }
+  },
+  validator: {
+    validates: {
+      requiredIf: function (val, condition){
+        return val && condition
+      }
+    }
+  },
+  methods: {
+    conditionalField: function (response, type) {
+      return response === type
+    }
+  }
+}).$mount('#demo')
+```
 
 ### Lazy initialization
 when you will use `wait-for` attribute, you allows initialization of validation to wait for asynchronous data to be loaded.
@@ -238,9 +313,9 @@ For example:
 
 ```html
 <form id="user-profile">
-    name: <input type="text" v-model="name" wait-for="name-loaded" v-validate="required"><br />
-    email: <input type="text" v-model="email" wait-for="email-loaded" v-validate="email"><br />
-    <input type="submit" value="send" v-if="valid && dirty">
+  name: <input type="text" v-model="name" wait-for="name-loaded" v-validate="required"><br />
+  email: <input type="text" v-model="email" wait-for="email-loaded" v-validate="email"><br />
+  <input type="submit" value="send" v-if="valid && dirty">
 </form>
 ```
 
@@ -292,10 +367,10 @@ For example, you can use `required` validator as follows.
 
 ```html
 <form id="user-form">
-    Password: <input type="password" v-model="password" v-validate="required"><br />
-    <div>
-        <span v-if="validation.password.required">required your password.</span>
-    </div>
+  Password: <input type="password" v-model="password" v-validate="required"><br />
+  <div>
+    <span v-if="validation.password.required">required your password.</span>
+  </div>
 </form>
 ```
 
@@ -307,10 +382,10 @@ v1.1.0 later, the usage of some existing `pattern` will have to be enclosed in s
 
 ```html
 <form id="user-form">
-    Zip: <input type="text" v-model="zip" v-validate="pattern: '/^[0-9]{3}-[0-9]{4}$/'"><br />
-    <div>
-        <span v-if="validation.zip.pattern">Invalid format of your zip code.</span>
-    </div>
+  Zip: <input type="text" v-model="zip" v-validate="pattern: '/^[0-9]{3}-[0-9]{4}$/'"><br />
+  <div>
+    <span v-if="validation.zip.pattern">Invalid format of your zip code.</span>
+  </div>
 </form>
 ```
 
@@ -319,10 +394,10 @@ For example, you can use `minLength` validator as follows.
 
 ```html
 <form id="blog-form">
-    <input type="text" v-model="comment" v-validate="minLength: 16">
-    <div>
-        <span v-if="validation.comment.minLength">too short your comment.</span>
-    </div>
+  <input type="text" v-model="comment" v-validate="minLength: 16">
+  <div>
+    <span v-if="validation.comment.minLength">too short your comment.</span>
+  </div>
 </form>
 ```
 
@@ -331,10 +406,10 @@ For example, you can use `maxLength` validator as follows.
 
 ```html
 <form id="blog-form">
-    <input type="text" v-model="comment" v-validate="maxLength: 128">
-    <div>
-        <span v-if="validation.comment.maxLength">too long your comment.</span>
-    </div>
+  <input type="text" v-model="comment" v-validate="maxLength: 128">
+  <div>
+    <span v-if="validation.comment.maxLength">too long your comment.</span>
+  </div>
 </form>
 ```
 
@@ -343,10 +418,10 @@ For example, you can use `min` validator as follows.
 
 ```html
 <form id="config-form">
-    <input type="text" v-model="threshold" v-validate="min: 0">
-    <div>
-        <span v-if="validation.threshold.min">too small threshold.</span>
-    </div>
+  <input type="text" v-model="threshold" v-validate="min: 0">
+  <div>
+    <span v-if="validation.threshold.min">too small threshold.</span>
+  </div>
 </form>
 ```
 
@@ -355,10 +430,10 @@ For example, you can use `max` validator as follows.
 
 ```html
 <form id="config-form">
-    <input type="text" v-model="threshold" v-validate="max: 100">
-    <div>
-        <span v-if="validation.threshold.max">too big threshold.</span>
-    </div>
+  <input type="text" v-model="threshold" v-validate="max: 100">
+  <div>
+    <span v-if="validation.threshold.max">too big threshold.</span>
+  </div>
 </form>
 ```
 
@@ -389,13 +464,13 @@ new MyComponent().$mount('#user-form')
 
 ```html
 <form id="user-form">
-    name: <input type="text" v-model="name" v-validate="required"><br />
-    address: <input type="text" v-model="address" v-validate="email"><br />
-    <input type="submit" value="send" v-if="valid && dirty">
-    <div>
-        <span v-if="validation.name.required">required your name.</span>
-        <span v-if="validation.address.email">invalid your email address format.</span>
-    </div>
+  name: <input type="text" v-model="name" v-validate="required"><br />
+  address: <input type="text" v-model="address" v-validate="email"><br />
+  <input type="submit" value="send" v-if="valid && dirty">
+  <div>
+    <span v-if="validation.name.required">required your name.</span>
+    <span v-if="validation.address.email">invalid your email address format.</span>
+  </div>
 </form>
 ```
 
@@ -404,6 +479,61 @@ If so, you can use validation result of custom validator.
 
 > NOTE:
 Your custom validator function should return the boolean value (valid -> `true`, invalid -> `false`).
+
+## Async validation
+
+You can implement async validation.
+
+Example:
+
+```html
+<form id="user-registration">
+  username: <input type="text" v-model="username" v-validate="exist"><br />
+  <input type="submit" value="send" v-if="valid && dirty">
+  <div>
+    <span v-if="validation.username.exist">already exist username.</span>
+  </div>
+</form>
+```
+
+```javascript
+new Vue({
+  data: { username: '' },
+  validator: {
+    validates: {
+      exist: function (val) {
+        return function (resolve, reject) {
+          // server-side validation with ajax (e.g. using `fetch` case)
+          fetch('/validators/exist', {
+            method: 'post',
+            headers: {
+              'content-type': 'application/json',
+              'x-token': 'xxxxxxxx'
+            },
+            body: JSON.stringify({ username: val })
+          }).then(function (res) {
+            if (res.status === 200) {
+              resolve()
+            } else if (res.status === 400) {
+              // something todo ...
+            }
+          }).catch(function (err) {
+            // something todo ...
+            reject()
+          })
+        }
+      }
+    }
+  }
+}).$mount('#user-registration')
+```
+
+You need to implement custom validator that return function have `function (resolve, reject)` like promise (future).
+The following, those argument of the function, you need to use according to validation result.
+
+- validation result
+    - successful: `resolve`
+    - failed: `reject`
 
 
 # Options
