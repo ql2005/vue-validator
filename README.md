@@ -1,59 +1,168 @@
 # vue-validator
 
-[![Build Status](https://travis-ci.org/vuejs/vue-validator.svg?branch=master)](https://travis-ci.org/vuejs/vue-validator)
-[![Coverage Status](https://coveralls.io/repos/vuejs/vue-validator/badge.svg?branch=master&service=github)](https://coveralls.io/github/vuejs/vue-validator?branch=master)
+[![Build Status](https://travis-ci.org/vuejs/vue-validator.svg?branch=dev)](https://travis-ci.org/vuejs/vue-validator)
+[![CircleCI Status](https://circleci.com/gh/vuejs/vue-validator/tree/dev.svg?style=shield&circle-token=36fad1862fbb44da91a28217df8fba769d6d1ce7)](https://circleci.com/gh/vuejs/vue-validator/tree/dev)
+[![Coverage Status](https://coveralls.io/repos/vuejs/vue-validator/badge.svg?branch=dev&service=github)](https://coveralls.io/github/vuejs/vue-validator?branch=dev)
 [![Sauce Test Status](https://saucelabs.com/buildstatus/vuejs-validator)](https://saucelabs.com/u/vuejs-validator)
+[![Commitizen friendly](https://img.shields.io/badge/commitizen-friendly-brightgreen.svg)](http://commitizen.github.io/cz-cli/)
 
 
 Validator component for Vue.js
 
 
 # Requirements
-- Vue.js ^`0.12.0`
+- Vue.js `1.0.10`+
+
+## NOTE
+vue-validator is still alpha verison. Maybe, There are some breaking change. 
+If you have some feedback, we are welcome in [Vue.js Discussion](http://forum.vuejs.org) :smiley_cat:
 
 
 # Installation
 
 ## npm
+
+### stable version
 ```shell
 $ npm install vue-validator
 ```
 
-## bower
-
+### development version
 ```shell
-$ bower install vue-validator
+git clone https://github.com/vuejs/vue-validator.git node_modules/vue-validator
+cd node_modules/vue-validator
+npm install
+npm run build
 ```
 
-## duo
-
+When used in CommonJS, you must explicitly install the router via `Vue.use()`:
 ```javascript
-var validator = require('vuejs/vue-validator')
+var Vue = require('vue')
+var VueValidator = require('vue-validator')
+
+Vue.use(VueValidator)
 ```
+
+You don't need to do this when using the standalone build because it installs itself automatically.
 
 ## CDN
-
+jsdelivr
 ```html
-<script src="http://cdn.jsdelivr.net/vue.validator/1.4.3/vue-validator.min.js"></script>
+<script src="https://cdn.jsdelivr.net/vue.validator/2.0.0-alpha.8/vue-validator.min.js"></script>
 ```
 
 
 # Usage
 
 ```javascript
-var Vue = require('vue')
-var validator = require('vue-validator')
-
-Vue.use(validator)
+new Vue({
+  el: '#app'
+})
 ```
 
-Install the plugin with `Vue.use`, we can use `v-validate` directive.
-
-The following is an example.
-
+We can use `validator` element directive and `v-validate` directive. The following is an example:
 
 ```html
-<form id="blog-form">
+<div id="app">
+  <validator name="validation1">
+    <form novalidate>
+      <input type="text" v-validate:username="['required']">
+      <input type="text" v-validate:comment="{ maxlength: 256 }">
+      <div>
+        <span v-show="$validation1.username.required">Required your name.</span>
+        <span v-show="$validation1.comment.maxlength">Your comment is too long.</span>
+      </div>
+      <input type="submit" value="send" v-if="$validation1.valid">
+    </form>
+  </validator>
+</div>
+```
+
+The validation results keep to validation scope as defined with vue-validator. In above case, the validation results keep to `$validation1` scope (prefixed with `$`) which was specified with `name` attribute of `validator` element directive.
+
+
+# Validation result structure
+The structure of validation results that was kept to validation scope is the below:
+
+```
+  $validation.valid
+             .invalid
+             .touched
+             .untouched
+             .dirty
+             .pristine
+             .modified
+             .messages.field1.validator1
+                             ...
+                             .validatorX
+                      .field2.validator1
+                             ...
+                             .validatorX
+             .field1.validator1
+                    ...
+                    .validatorX
+                    .valid
+                    .invalid
+                    .touched
+                    .untouched
+                    .dirty
+                    .pristine
+                    .modified
+                    .messages.validator1
+                             ...
+                             .validatorX
+             ...
+             .fieldX.validator1
+                    ...
+                    .validatorX
+                    .valid
+                    .invalid
+                    .touched
+                    .untouched
+                    .dirty
+                    .pristine
+                    .modified
+                    .messages.validator1
+                             ...
+                             .validatorX
+```
+
+The various top-level properties has been defined in the validation scope, and the each field validation result has been defined as field namespace.
+
+## Field validation properties
+- `valid`: whether field is valid. if it's valid, then return `true`, else return `false`.
+- `invalid`: reverse of `valid`.
+- `touched`: whether field is touched. if field was focused, return `true`, else return `false`.
+- `untouched`: reverse of `touched`.
+- `modified`: whether field value is modified. if field value was changed from **initial** value, return `true`, else return `false`.
+- `dirty`: whether field value was changed at least **once**. if so, return `true`, else return `false`.
+- `pristine`: reverse of `dirty`.
+- `messages`: if invalid field exist, return error message wrapped with object, else `undefined`.
+
+## Top level validation properties
+- `valid`: whether **all** fields is valid. if so, then return `true`, else return `false`.
+- `invalid`: if invalid field exist even **one** in validate fields, return `true`, else `false`.
+- `touched`: whether **all** fields is touched, if so, return `true`, else `false`.
+- `untouched`: if untouched field exist even **one** in validate fields, return `true`, else `false`.
+- `modified`: if modified field exist even **one** in validate fields, return `true`, else `false`.
+- `dirty`: if dirty field exist even **one** in validate fields, return `true`, else `false`.
+- `pristine`: whether **all** fields is pristine, if so, return `true`, else `false`.
+- `messages`: if invalid even one exist, return all field error message wrapped with object, else `undefined`.
+
+
+# Validator syntax
+`v-validate` directive syntax the below:
+
+```
+    v-validate:field="array literal | object literal | binding"
+```
+
+## Field
+The vue-validator version 2.0-alpha or earlier, validation result had been kept per `v-model`. In 2.0-alpha later, use the argument of `v-validate` directive instead of `v-model`.
+
+~v1.4.4:
+```html
+<form novalidate>
   <input type="text" v-model="comment" v-validate="minLength: 16, maxLength: 128">
   <div>
     <span v-show="validation.comment.minLength">Your comment is too short.</span>
@@ -63,559 +172,277 @@ The following is an example.
 </form>
 ```
 
-
-
-# Properties
-
-## validation
-The `validation` keep the validation result of validator per each `v-model`.
-
-The following format 
-
+v2.0-alpha later:
+```html
+<validator name="validation">
+  <form novalidate>
+    <input type="text" v-validate:comment="{ minlength: 16, maxLlngth: 128 }">
+    <div>
+      <span v-show="$validation.comment.minlength">Your comment is too short.</span>
+      <span v-show="$validation.comment.maxlength">Your comment is too long.</span>
+    </div>
+    <input type="submit" value="send" v-if="valid">
+  </form>
+</validator>
 ```
-    validation.model.validator
-```
 
+### caml-case property
+As well as [Vue.js](http://vuejs.org/guide/components.html#camelCase_vs-_kebab-case), you can use the kebab-case at the argument of `v-validate`.
 
-For example, if you use `required` validator on the password `v-model`, as follows
+below the example:
 
 ```html
-<form id="user-form">
-  Password: <input type="password" v-model="password" v-validate="required"><br />
-  <div>
-    <span v-if="validation.password.required">required your password.</span>
-  </div>
-</form>
+<validator name="validation">
+  <form novalidate>
+    <input type="text" v-validate:user-name="{ minlength: 16 }">
+    <div>
+      <span v-if="$validation.userName.minlength">Your user name is too short.</span>
+    </div>
+  </form>
+</validator>
 ```
 
-## valid
-The `valid` keep the validation result of validator.
+## Literal
 
-- type: Boolean
-    - true: success
-    - false: failed
-
-The `valid` keep two types validation result.
-
-### all models validation
-For example, you can use `valid` as follows
+### Array
+The below is example that using array literal:
 
 ```html
-<form id="user-form">
-  ID: <input type="text" v-model="id" v-validate="required, minLength: 3, maxLength: 16"><br />
-  Password: <input type="password" v-model="password" v-validate="required, minLength: 8, maxLength: 16"><br />
-  <input type="submit" value="send" v-if="valid">
-  <div>
-    <span v-if="validation.id.required">Your ID is required.</span>
-    <span v-if="validation.id.minLength && id">Your ID is too short.</span>
-    <span v-if="validation.id.maxLength">Your ID is too long.</span>
-    <span v-if="validation.password.required">Password is required.</span>
-    <span v-if="validation.password.minLength && password">Your password is too short.</span>
-    <span v-if="validation.password.maxLength">Your password is too long.</span>
-  </div>
-</form>
+<validator name="validation">
+  <form novalidate>
+    Zip: <input type="text" v-validate:zip="['required']"><br />
+    <div>
+      <span v-if="$validation.zip.required">Required zip code.</span>
+    </div>
+  </form>
+</validator>
 ```
 
-In the above example, the `valid` keep the validation result of all validator.
+Like the `required`, if you don't need to specify the rule, you should use it.
 
-### each model validation
-For example, you can use `valid` as follows
+
+### Object
+The below is example that using object literal:
 
 ```html
-<form id="user-form">
-  <div v-class="error: validation.id.valid">
-    ID: <input type="text" v-model="id" v-validate="required, minLength: 3, maxLength: 16"><br />
-    <span v-if="validation.id.required">required your ID.</span>
-    <span v-if="validation.id.minLength">too short your ID.</span>
-    <span v-if="validation.id.maxLength">too long your ID.</span>
-  </div>
-  <div v-class="error: validation.password.valid">
-    Password: <input type="password" v-model="password" v-validate="required, minLength: 8 maxLength: 16"><br />
-    <span v-if="validation.password.required">required your password.</span>
-    <span v-if="validation.password.minLength">too short your password.</span>
-    <span v-if="validation.password.maxLength">too long your password.</span>
-  </div>
-  <input type="submit" value="send" v-if="valid">
-</form>
+<validator name="validation">
+  <form novalidate>
+    ID: <input type="text" v-validate:id="{ required: true, minlength: 3, maxlength: 16 }"><br />
+    <div>
+      <span v-if="$validation.id.required">Required Your ID.</span>
+      <span v-if="$validation.id.minlength">Your ID is too short.</span>
+      <span v-if="$validation.id.maxlength">Your ID is too long.</span>
+    </div>
+  </form>
+</validator>
 ```
 
-## invalid
-The `invalid` (reverse of `valid`) keep the validation result of validator. 
+You can specify the rule value on the object literal. Like the `required`, you can specify the **dummy rule** value on the literal object.
 
-- type: Boolean
-    - true: failed
-    - false: success
-
-The `invalid` keep two types validation result.
-
-### all models validation
-The `invalid` keep the validation result of all validator (See the example of `valid`).
-
-### each model validation
-The `invalid` keep the validation result of each validator (See the example of `valid`).
-
-
-## dirty
-The `dirty` keep whether there was a change since initial value of `v-model`.
-
-- type: Boolean
-    - true: changed from the initial data
-    - false: not changed from the initial data
-
-The `dirty` keep two types.
-
-### each model
-For example, you can use `dirty` as follows
+And also, you can specify strict object as the below:
 
 ```html
-<form id="blog-form">
-  <input type="text" value="hello" v-model="comment" v-validate="maxLength: 128">
-  <div>
-    <span v-if="validation.comment.valid && validation.comment.dirty">your comment OK !!</span>
-  </div>
-</form>
+<validator name="validation">
+  <form novalidate>
+    ID: <input type="text" v-validate:id="{ minlength: { rule: 3 }, maxlength: { rule: 16 } }"><br />
+    <div>
+      <span v-if="$validation.id.minlength">Your ID is too short.</span>
+      <span v-if="$validation.id.maxlength">Your ID is too long.</span>
+    </div>
+  </form>
 ```
 
-In the above example, the `dirty` keep the per each `v-model`.
-
-### all models
-The `dirty` keep the result of all moedls.
-
-If you has some model properties, when any one property is dirty, it return `true`.
-
-For example, you can use `dirty` as follows
-
-```html
-<form id="user-form">
-  ID: <input type="text" v-model="id" v-validate="required, minLength: 3, maxLength: 16"><br />
-  Password: <input type="password" v-model="password" v-validate="required, minLength: 8 maxLength: 16"><br />
-  <input type="submit" value="send" v-if="valid && dirty">
-</form>
-```
-
-In the above example, the `dirty` keep the all `v-model`.
-
-
-# Directives
-
-## v-validate
-- This directive must be used together with `v-model`.
-- This directive accepts a property of viewmodel.
-- Directive params: wait-for
-
-Validate the value of `v-model`. 
-You can specify the build-in validator or custom validator to be described later.
-
-### Reactivity
-You can specify the property of viewmodel as validator reactive argument to expression of directive.
-
-For Example:
-
-```html
-<form id="config-form">
-  <input type="text" v-model="threshold" v-validate="min: minValue, max: maxValue">
-</form>
-```
+## Binding
+The below is example that using binding:
 
 ```javascript
 new Vue({
+  el: '#app',
   data: {
-    threshold: 50,
-    minValue: 0, // for `min` validator
-    maxValue: 100 // for `max` validator
-  },
-  ready: function () {
-    // change validator argument
-    this.$set('min', -50)
-    this.$set('max', 100)
+    rules: {
+      minlength: 3,
+      maxlength: 16
+    }
   }
-}).$mount('#config-form')
+})
+```
+```html
+<div id="app">
+  <validator name="validation">
+    <form novalidate>
+      ID: <input type="text" v-validate:id="rules"><br />
+      <div>
+        <span v-if="$validation.id.minlength">Your ID is too short.</span>
+        <span v-if="$validation.id.maxlength">Your ID is too long.</span>
+      </div>
+    </form>
+  </validator>
+</div>
 ```
 
-> **NOTE:**
-In current version, not support {{ mustache }} expressions.
+In addition to the above data scope example, you can specify also the computed property or methods.
 
-Of course, you can specify computed properties and method that was defined `methods` in Vue instance.
 
-The following is an example that using a custom validator:
+# Grouping
+You can grouping validation results. the below example:
 
 ```html
-<style>.error { border: solid #ff0000; }</style>
-<form id="demo">
-  <label for="response">How do you want to respond ?</label>
-  <input id="response_approve" 
-         checked="checked" 
-         name="response" 
-         type="radio" 
-         value="approve" 
-         v-model="response">
-  <label for="response_approve">approve</label>
-  <input id="response_decline" 
-         name="response" 
-         type="radio" 
-         value="decline" 
-         v-model="response">
-  <label for="response_decline">decline</label>
-  
-  <div v-show="conditionalField(response, 'approve')" 
-       v-class="error: validation.message.approve.invalid">
-    <label for="approved_message">Approved message</label>
-    <input type="text" 
-           id="approved_message" 
-           name="approved_message" 
-           v-model="message.approve" 
-           v-validate="requiredIf: conditionalField(response, 'approve'), maxLength: 100">
+<validator name="validation1" :groups="['user', 'password']">
+  username: <input type="text" group="user" v-validate:username="['required']"><br />
+  password: <input type="text" group="password" v-validate:password1="{ minlength: 8, required: true }"/><br />
+  password (confirm): <input type="text" group="password" v-validate:password2="{ minlength: 8, required: true }"/>
+  <div class="user">
+    <span v-if="$validation1.username.required">Required your name.</span>
   </div>
-  
-  <div v-show="conditionalField(response, 'decline')" 
-       v-class="error: validation.message.decline.invalid">
-    <label for="declined_message">Declined message</label>
-    <input type="text" 
-           id="declined_message" 
-           name="declined_message" 
-           v-model="message.decline" 
-           v-validate="requiredIf: conditionalField(response, 'decline'), maxLength: 100">
+  <div class="password">
+    <span v-if="$validation1.password.invalid">Invalid password input !!</span>
   </div>
-      
-  <div><input type="submit" v-if="validFiled"></div>
-</form>
+</validator>
 ```
+
+
+# Messages
+You can specify error message that can get the validation scope.
+
+```html
+<validator name="validation1">
+  username: <input type="text" v-validate:username="{
+    required: { rule: true, message: 'required you name !!' }
+  }"><br />
+  password: <input type="text" v-validate:password="{
+    required: { rule: true, message: 'required you password !!' },
+    minlength: { rule: 8, messsage: 'your password short too !!' }
+  }"/><br />
+  <div class="errors">
+    <ul>
+      <li v-for="obj in $validation1.messages">
+        <div class="{{$key}}" v-for="msg in obj">
+          <p>{{$key}}: {{msg}}</p>
+        </div>
+      </li>
+    </ul>
+  </div>
+</validator>
+```
+
+
+# Event
+You can handle the `valid` event and `invalid` event. the below example:
 
 ```javascript
 new Vue({
-  data: {
-    response: '',
-    message: {
-      approve: '',
-      decline: ''
+  el: '#app',
+  methods: {
+    onValid: function () {
+      console.log('occured valid event')
+    },
+    onInvalid: function () {
+      console.log('occured invalid event')
     }
+  }
+})
+```
+```html
+<div id="app">
+  <validator name="validation1">
+    comment: <input type="text" @valid="onValid" @invalid="onInvalid" v-validate:comment="[required]"/>
+  </validator>
+</div>
+```
+
+
+# Lazy initialization
+When you will use `lazy` attribute on `validator` element directive, you allows initialization (compilation) of `validator` element directive to wait for asynchronous data to be loaded.
+
+The below component example:
+
+```html
+<!-- comment component -->
+<div>
+  <h1>Preview</h1>
+  <p>{{comment}}</p>
+  <validator lazy name="validation1">
+    <input type="text" :value="comment" v-validate:comment="{ required: true, maxlength: 256 }"/>
+    <span v-if="$validation1.comment.required">Required your comment</span>
+    <span v-if="$validation1.comment.maxlength">Too long comment !!</span>
+    <button type="button" value="save" @click="onSave" v-if="valid">
+  </validator>
+</div>
+```
+
+```javascript
+Vue.component('comment', {
+  props: {
+    id: Number,
   },
-  computed: {
-    validFiled: function () {
-      return this.validation.message.approve.valid ||
-             this.validation.message.decline.valid
-    }
+  data: function () {
+    return { comment: '' }
   },
-  validator: {
-    validates: {
-      requiredIf: function (val, condition){
-        return val && condition
-      }
-    }
+  activate: function () {
+    var resource = this.$resource('/comments/:id');
+    resource.get({ id: this.id }, function (comment, stat, req) {
+      this.commont =  comment.body
+
+      // activate validator
+      this.$activateValidator()
+
+    }.bind(this)).error(function (data, stat, req) {
+      // handle error ...
+    })
   },
   methods: {
-    conditionalField: function (response, type) {
-      return response === type
+    onSave: function () {
+      var resource = this.$resource('/comments/:id');
+      resource.save({ id: this.id }, { body: this.comment }, function (data, stat, req) {
+        // handle success
+      }).error(function (data, sta, req) {
+        // handle error
+      })
     }
   }
-}).$mount('#demo')
+})
 ```
 
-### Lazy initialization
-when you will use `wait-for` attribute, you allows initialization of validation to wait for asynchronous data to be loaded.
-You can specify an event name that is occured by `$emit` at `created`, `compiled` or `ready` hook.
+As above example, When asynchronous data loading finished, you need to call `$activateValidator` meta method.
 
-For example:
 
-```html
-<form id="user-profile">
-  name: <input type="text" v-model="name" wait-for="name-loaded" v-validate="required"><br />
-  email: <input type="text" v-model="email" wait-for="email-loaded" v-validate="email"><br />
-  <input type="submit" value="send" v-if="valid && dirty">
-</form>
-```
+# Custom validator with Assets
+You can register your custom validator with using `Vue.validator`. the below the exmpale:
 
 ```javascript
+// register custom validator
+Vue.validate('email', function (val) {
+  return /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(val)
+})
+
 new Vue({
+  el: '#app'
   data: {
-    name: '',
     email: ''
-  },
-  ready: function () {
-    var self = this
-    
-    // ...
-
-    // load user profile data with ajax (example: vue-resource)
-    var resource = this.$resource('/users/:id')
-    resource.get({ id: 1 }, function (data, status, request) {
-      // ...
-
-      // emit the event that was specified 'wait-for' attribute
-      self.$emit('name-loaded', data.name)
-      self.$emit('email-loaded', data.email)
-
-      // ...
-    }).error(function (data, status, request) {
-      // handle error
-      // ...
-    })
-  }
-}).$mount('#user-profile')
-```
-
-`$emit` of interface conventions are as follows:
-
-```javascript
-    vm.$emit( eventName, propVal ) 
-```
-
-- **eventName**: the event name that was specified with 'wait-for' attribute
-- **propVal**: the property value that is initialized of validation
-
-
-# Validators
-
-## build-in validator
-
-### required
-For example, you can use `required` validator as follows.
-
-```html
-<form id="user-form">
-  Password: <input type="password" v-model="password" v-validate="required"><br />
-  <div>
-    <span v-if="validation.password.required">required your password.</span>
-  </div>
-</form>
-```
-
-### pattern
-For example, you can use `pattern` validator as follows.
-
-> **NOTE:**
-v1.1.0 later, the usage of some existing `pattern` will have to be enclosed in single quotes.
-
-```html
-<form id="user-form">
-  Zip: <input type="text" v-model="zip" v-validate="pattern: '/^[0-9]{3}-[0-9]{4}$/'"><br />
-  <div>
-    <span v-if="validation.zip.pattern">Invalid format of your zip code.</span>
-  </div>
-</form>
-```
-
-### minLength
-For example, you can use `minLength` validator as follows.
-
-```html
-<form id="blog-form">
-  <input type="text" v-model="comment" v-validate="minLength: 16">
-  <div>
-    <span v-if="validation.comment.minLength">too short your comment.</span>
-  </div>
-</form>
-```
-
-### maxLength
-For example, you can use `maxLength` validator as follows.
-
-```html
-<form id="blog-form">
-  <input type="text" v-model="comment" v-validate="maxLength: 128">
-  <div>
-    <span v-if="validation.comment.maxLength">too long your comment.</span>
-  </div>
-</form>
-```
-
-### min
-For example, you can use `min` validator as follows.
-
-```html
-<form id="config-form">
-  <input type="text" v-model="threshold" v-validate="min: 0">
-  <div>
-    <span v-if="validation.threshold.min">too small threshold.</span>
-  </div>
-</form>
-```
-
-### max
-For example, you can use `max` validator as follows.
-
-```html
-<form id="config-form">
-  <input type="text" v-model="threshold" v-validate="max: 100">
-  <div>
-    <span v-if="validation.threshold.max">too big threshold.</span>
-  </div>
-</form>
-```
-
-
-## User custom validator
-
-Additionally, you can use custom validator.
-
-The following custom validator
-
-```javascript
-var MyComponent = Vue.extend({
-  data: {
-    name: '',
-    address: ''
-  },
-  validator: {
-    validates: {
-      email: function (val) {
-        return /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(val)
-      }
-    }
   }
 })
-
-new MyComponent().$mount('#user-form')
 ```
-
 ```html
-<form id="user-form">
-  name: <input type="text" v-model="name" v-validate="required"><br />
-  address: <input type="text" v-model="address" v-validate="email"><br />
-  <input type="submit" value="send" v-if="valid && dirty">
-  <div>
-    <span v-if="validation.name.required">required your name.</span>
-    <span v-if="validation.address.email">invalid your email address format.</span>
-  </div>
-</form>
+<div id="app">
+  <validator name="validation1">
+    address: <input type="text" v-validate:address=['email']><br />
+    <div>
+      <span v-if="$validation1.address.email">invalid your email address format.</span>
+    </div>
+  <validator>
+</div>
 ```
 
-You need to specify custom validator function to `validates` of `validator` installation option.
-If so, you can use validation result of custom validator.
-
-> NOTE:
-Your custom validator function should return the boolean value (valid -> `true`, invalid -> `false`).
-
-## Async validation
-
-You can implement async validation.
-
-Example:
-
-```html
-<form id="user-registration">
-  username: <input type="text" v-model="username" v-validate="exist"><br />
-  <input type="submit" value="send" v-if="valid && dirty">
-  <div>
-    <span v-if="validation.username.exist">already exist username.</span>
-  </div>
-</form>
-```
-
-```javascript
-new Vue({
-  data: { username: '' },
-  validator: {
-    validates: {
-      exist: function (val) {
-        return function (resolve, reject) {
-          // server-side validation with ajax (e.g. using `fetch` case)
-          fetch('/validators/exist', {
-            method: 'post',
-            headers: {
-              'content-type': 'application/json',
-              'x-token': 'xxxxxxxx'
-            },
-            body: JSON.stringify({ username: val })
-          }).then(function (res) {
-            if (res.status === 200) {
-              resolve()
-            } else if (res.status === 400) {
-              // something todo ...
-            }
-          }).catch(function (err) {
-            // something todo ...
-            reject()
-          })
-        }
-      }
-    }
-  }
-}).$mount('#user-registration')
-```
-
-You need to implement custom validator that return function have `function (resolve, reject)` like promise (future).
-The following, those argument of the function, you need to use according to validation result.
-
-- validation result
-    - successful: `resolve`
-    - failed: `reject`
+> **MEMO:** `Vue.validate` asset is extended by vue-validator.
 
 
-# Options
-
-## Installation Options
-
-### namespace
-You can specify installation options such as the following example.
-
-```javascript
-var MyComponent = Vue.extend({
-  ...
-  validator: {
-    namespace: {
-      validation: 'myValidation', 
-      valid: 'myValid', 
-      invalid: 'myInvalid', 
-      dirty: 'myDirty'
-    }
-  }
-  ...
-})
-```
-
-#### validation
-Specify `validation` data scope name.
-
-If you specified the `myValidation` to namespace option, you can access validation result name as `myValidation`.
-
-If you did not specify, you can access validation result name as `valiadtion` (default).
-
-#### valid
-Specify `valid` data scope name.
-
-If you specified the `myValid` to namespace option, you can access validation result name as `myValid`.
-
-If you did not specify, you can access validation result name as `valid` (default).
-
-#### invalid
-Specify `invalid` data scope name
-
-If you specified the `myInvalid` to namespace option, you can access validation result name as `myInvalid`.
-
-If you did not specify, you can access validation result name as `invalid` (default).
-
-#### dirty
-Specify `dirty` data scope name
-
-If you specified the `myDirty` to namespace option, you can access validation result name as `myDirty`.
-
-If you did not specify, you can access validation result name as `dirty` (default).
-
-
-## Plugin Options
-You can specify options such as the following example.
-
-```javascript
-Vue.use(plugin, {
-  component: '$myvalidator',
-  directive: 'myvalidate'
-})
-```
-
-### component
-Specify vue-validator instance name.
-
-If you specified the `$myvalidator` to plugin option, you can access vue-validator instance name as `$myvalidation` on the viewmodel instance.
-
-If you did not specify, you can access validation result name as `$validator` (default).
-
-### directive
-Specify validate directive name.
-
-If you specified the `myvalidate` to plugin option, you can use validation directive name as `v-myvalidate`.
-
-If you did not specify, you can use validation directive name as `v-validate` (default).
+# TODO
+- async validation
+- validate timing customize with options
+- local asset registration (`compontents` asset-like)
+- server-side validation error applying
+- more tests !!
+- [and other issues...](https://github.com/vuejs/vue-validator/labels/2.0)
 
 
 # Contributing
@@ -629,7 +456,7 @@ If you did not specify, you can use validation directive name as `v-validate` (d
 # Testing
 
 ```shell
-$ make test
+$ npm test
 ```
 
 

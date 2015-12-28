@@ -1,813 +1,810 @@
-/**
- * vue-validator v1.4.3
- * (c) 2014-2015 kazuya kawaguchi
+/*!
+ * vue-validator v2.0.0-alpha.8
+ * (c) 2015 kazuya kawaguchi
  * Released under the MIT License.
  */
-
-(function webpackUniversalModuleDefinition(root, factory) {
-	if(typeof exports === 'object' && typeof module === 'object')
-		module.exports = factory();
-	else if(typeof define === 'function' && define.amd)
-		define([], factory);
-	else if(typeof exports === 'object')
-		exports["vue-validator"] = factory();
-	else
-		root["vue-validator"] = factory();
-})(this, function() {
-return /******/ (function(modules) { // webpackBootstrap
-/******/ 	// The module cache
-/******/ 	var installedModules = {};
-
-/******/ 	// The require function
-/******/ 	function __webpack_require__(moduleId) {
-
-/******/ 		// Check if module is in cache
-/******/ 		if(installedModules[moduleId])
-/******/ 			return installedModules[moduleId].exports;
-
-/******/ 		// Create a new module (and put it into the cache)
-/******/ 		var module = installedModules[moduleId] = {
-/******/ 			exports: {},
-/******/ 			id: moduleId,
-/******/ 			loaded: false
-/******/ 		};
-
-/******/ 		// Execute the module function
-/******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
-
-/******/ 		// Flag the module as loaded
-/******/ 		module.loaded = true;
-
-/******/ 		// Return the exports of the module
-/******/ 		return module.exports;
-/******/ 	}
-
-
-/******/ 	// expose the modules object (__webpack_modules__)
-/******/ 	__webpack_require__.m = modules;
-
-/******/ 	// expose the module cache
-/******/ 	__webpack_require__.c = installedModules;
-
-/******/ 	// __webpack_public_path__
-/******/ 	__webpack_require__.p = "";
-
-/******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(0);
-/******/ })
-/************************************************************************/
-/******/ ([
-/* 0 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Import(s)
-	 */
-
-	var validates = __webpack_require__(1)
-	var _ = __webpack_require__(2)
-
-
-	/**
-	 * Export(s)
-	 */
-
-	module.exports = install
-
-
-	/**
-	 * Install plugin
-	 */
-
-	function install (Vue, options) {
-	  options = options || {}
-	  var componentName = options.component = options.component || '$validator'
-	  var directiveName = options.directive = options.directive || 'validate'
-	  var path = Vue.parsers.path
-	  var util = Vue.util
-
-	  function getVal (obj, keypath) {
-	    var ret = null
-	    try {
-	      ret = path.get(obj, keypath)
-	    } catch (e) { }
-	    return ret
-	  }
-
-
-	  Vue.directive(directiveName, {
-
-	    priority: 1024,
-
-	    bind: function () {
-	      var vm = this.vm
-	      var el = this.el
-	      var $validator = vm[componentName]
-	      var keypath = this._keypath = this._parseModelAttribute(el.getAttribute(Vue.config.prefix + 'model'))
-	      var validator = this.arg ? this.arg : this.expression
-	      var arg = this.arg ? this.expression : null
-
-	      var customs = (vm.$options.validator && vm.$options.validator.validates) || {}
-	      if (!this._checkDirective(validator, validates, customs)) {
-	        _.warn('specified invalid v-validate directive !! please check v-validator directive !!')
-	        this._ignore = true
-	        return
-	      }
-
-	      if (!$validator) {
-	        vm[componentName] = $validator = vm.$addChild({
-	          validator: vm.$options.validator
-	        }, Vue.extend(__webpack_require__(3)))
-	      }
-
-	      var value = el.getAttribute('value')
-	      if (el.getAttribute('number') !== null) {
-	        value = util.toNumber(value)
-	      }
-	      this._init = value
-
-	      var validation = $validator._getValidationNamespace('validation')
-	      var init = value || vm.$get(keypath)
-	      var readyEvent = el.getAttribute('wait-for')
-
-	      if (readyEvent && !$validator._isRegistedReadyEvent(keypath)) {
-	        $validator._addReadyEvents(keypath, this._checkParam('wait-for'))
-	      }
-	      
-	      this._setupValidator($validator, keypath, validation, validator, el, arg, init)
-	    },
-
-	    update: function (val, old) {
-	      if (this._ignore) { return }
-
-	      var self = this
-	      var vm = this.vm
-	      var keypath = this._keypath
-	      var validator = this.arg ? this.arg : this.expression
-	      var $validator = vm[componentName]
-
-	      $validator._changeValidator(keypath, validator, val)
-	      if (!$validator._isRegistedReadyEvent(keypath)) { // normal
-	        this._updateValidator($validator, validator, keypath)
-	      } else { // wait-for
-	        vm.$once($validator._getReadyEvents(keypath), function (val) {
-	          $validator._setInitialValue(keypath, val)
-	          vm.$set(keypath, val)
-	          self._updateValidator($validator, validator, keypath)
-	        })
-	      }
-	    },
-
-	     
-	    unbind: function () {
-	      if (this._ignore) { return }
-
-	      var vm = this.vm
-	      var keypath = this._keypath
-	      var validator = this.arg ? this.arg : this.expression
-	      var $validator = vm[componentName]
-
-	      this._teardownValidator(vm, $validator, keypath, validator)
-	    },
-
-	    _parseModelAttribute: function (attr) {
-	      var res = Vue.parsers.directive.parse(attr)
-	      return res[0].arg ? res[0].arg : res[0].expression
-	    },
-
-	    _checkDirective: function (validator, validates, customs) {
-	      var items = Object.keys(validates).concat(Object.keys(customs))
-	      return items.some(function (item) {
-	        return item === validator
-	      })
-	    },
-
-	    _setupValidator: function ($validator, keypath, validation, validator, el, arg, init) {
-	      var vm = this.vm
-
-	      if (!getVal($validator[validation], keypath)) {
-	        $validator._defineModelValidationScope(keypath)
-	        if (el.tagName === 'INPUT' && el.type === 'radio') {
-	          if (getVal(vm, keypath) === init) {
-	            $validator._setInitialValue(keypath, init)
-	          }
-	        } else {
-	          $validator._setInitialValue(keypath, init)
-	        }
-	      }
-
-	      if (!getVal($validator[validation], [keypath, validator].join('.'))) {
-	        $validator._defineValidatorToValidationScope(keypath, validator)
-	        $validator._addValidator(keypath, validator, getVal(vm, arg) || arg)
-	      }
-	    },
-
-	    _updateValidator: function ($validator, validator, keypath) {
-	      var value = $validator.$get(keypath)
-	      var el = this.el
-
-	      if (this._init) {
-	        value = this._init
-	        delete this._init
-	      }
-
-	      if (el.tagName === 'INPUT' && el.type === 'radio') {
-	        if (value === $validator.$get(keypath)) {
-	          $validator._updateDirtyProperty(keypath, value)
-	        }
-	      } else {
-	        $validator._updateDirtyProperty(keypath, value)
-	      }
-
-	      $validator._doValidate(keypath, validator, $validator.$get(keypath))
-	    },
-
-	    _teardownValidator: function (vm, $validator, keypath, validator) {
-	      $validator._undefineValidatorToValidationScope(keypath, validator)
-	      $validator._undefineModelValidationScope(keypath, validator)
-	    }
-	  })
-	}
-
-
-/***/ },
-/* 1 */
-/***/ function(module, exports) {
-
-	/**
-	 * Fundamental validate functions
-	 */
-
-
-	/**
-	 * required
-	 *
-	 * This function validate whether the value has been filled out.
-	 *
-	 * @param val
-	 * @return {Boolean}
-	 */
-
-	function required (val) {
-	  if (Array.isArray(val)) {
-	    return val.length > 0
-	  } else if (typeof val === 'number') {
-	    return true
-	  } else if ((val !== null) && (typeof val === 'object')) {
-	    return Object.keys(val).length > 0
-	  } else {
-	    return !val
-	      ? false
-	      : true
-	  }
-	}
-
-
-	/**
-	 * pattern
-	 *
-	 * This function validate whether the value matches the regex pattern
-	 *
-	 * @param val
-	 * @param {String} pat
-	 * @return {Boolean}
-	 */
-
-	function pattern (val, pat) {
-	  if (typeof pat !== 'string') { return false }
-
-	  var match = pat.match(new RegExp('^/(.*?)/([gimy]*)$'))
-	  if (!match) { return false }
-
-	  return new RegExp(match[1], match[2]).test(val)
-	}
-
-
-	/**
-	 * minLength
-	 *
-	 * This function validate whether the minimum length of the string.
-	 *
-	 * @param {String} val
-	 * @param {String|Number} min
-	 * @return {Boolean}
-	 */
-
-	function minLength (val, min) {
-	  return typeof val === 'string' &&
-	    isInteger(min, 10) &&
-	    val.length >= parseInt(min, 10)
-	}
-
-
-	/**
-	 * maxLength
-	 *
-	 * This function validate whether the maximum length of the string.
-	 *
-	 * @param {String} val
-	 * @param {String|Number} max
-	 * @return {Boolean}
-	 */
-
-	function maxLength (val, max) {
-	  return typeof val === 'string' &&
-	    isInteger(max, 10) &&
-	    val.length <= parseInt(max, 10)
-	}
-
-
-	/**
-	 * min
-	 *
-	 * This function validate whether the minimum value of the numberable value.
-	 *
-	 * @param {*} val
-	 * @param {*} arg minimum
-	 * @return {Boolean}
-	 */
-
-	function min (val, arg) {
-	  return !isNaN(+(val)) && !isNaN(+(arg)) && (+(val) >= +(arg))
-	}
-
-
-	/**
-	 * max
-	 *
-	 * This function validate whether the maximum value of the numberable value.
-	 *
-	 * @param {*} val
-	 * @param {*} arg maximum
-	 * @return {Boolean}
-	 */
-
-	function max (val, arg) {
-	  return !isNaN(+(val)) && !isNaN(+(arg)) && (+(val) <= +(arg))
-	}
-
-
-	/**
-	 * isInteger
-	 *
-	 * This function check whether the value of the string is integer.
-	 *
-	 * @param {String} val
-	 * @return {Boolean}
-	 * @private
-	 */
-
-	function isInteger (val) {
-	  return /^(-?[1-9]\d*|0)$/.test(val)
-	}
-
-
-	/**
-	 * export(s)
-	 */
-	module.exports = {
-	  required: required,
-	  pattern: pattern,
-	  minLength: minLength,
-	  maxLength: maxLength,
-	  min: min,
-	  max: max
-	}
-
-
-/***/ },
-/* 2 */
-/***/ function(module, exports) {
-
-	/**
-	 * Utilties
-	 */
-
-
-	/**
-	 * warn
-	 *
-	 * @param {String} msg
-	 * @param {Error} [err]
-	 *
-	 */
-
-	exports.warn = function (msg, err) {
-	  if (window.console) {
-	    console.warn('[vue-validator] ' + msg)
-	    if (err) {
-	      console.warn(err.stack)
-	    }
-	  }
-	}
-
-	/**
-	 * Get target validatable object
-	 *
-	 * @param {Object} validation
-	 * @param {String} keypath
-	 * @return {Object} validatable object
-	 */
-
-	exports.getTarget = function (validation, keypath) {
-	  var last = validation
-	  var keys = keypath.split('.')
-	  var key, obj
-	  for (var i = 0; i < keys.length; i++) {
-	    key = keys[i]
-	    obj = last[key]
-	    last = obj
-	    if (!last) {
-	      break
-	    }
-	  }
-	  return last
-	}
-
-
-/***/ },
-/* 3 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * Import(s)
-	 */
-
-	var validates = __webpack_require__(1)
-	var _ = __webpack_require__(2)
-
-
-	/**
-	 * Export(s)
-	 */
-
-
-	/**
-	 * `v-validator` component with mixin
-	 */
-
-	module.exports = {
-	  inherit: true,
-
-	  created: function () {
-	    this._initValidationVariables()
-	    this._initOptions()
-	    this._mixinCustomValidates()
-	    this._defineProperties()
-	    this._defineValidationScope()
-	  },
-
-	  methods: {
-	    _getValidationNamespace: function (key) {
-	      return this.$options.validator.namespace[key]
-	    },
-
-	    _initValidationVariables: function () {
-	      this._validators = {}
-	      this._validates = {}
-	      this._initialValues = {}
-	      for (var key in validates) {
-	        this._validates[key] = validates[key]
-	      }
-	      this._validatorWatchers = {}
-	      this._readyEvents = {}
-	    },
-
-	    _initOptions: function () {
-	      var validator = this.$options.validator = this.$options.validator || {}
-	      var namespace = validator.namespace = validator.namespace || {}
-	      namespace.validation = namespace.validation || 'validation'
-	      namespace.valid = namespace.valid || 'valid'
-	      namespace.invalid = namespace.invalid || 'invalid'
-	      namespace.dirty = namespace.dirty || 'dirty'
-	    },
-
-	    _mixinCustomValidates: function () {
-	      var customs = this.$options.validator.validates
-	      for (var key in customs) {
-	        this._validates[key] = customs[key]
-	      }
-	    },
-
-	    _defineValidProperty: function (target, getter) {
-	      Object.defineProperty(target, this._getValidationNamespace('valid'), {
-	        enumerable: true,
-	        configurable: true,
-	        get: getter
-	      })
-	    },
-
-	    _undefineValidProperty: function (target) {
-	      delete target[this._getValidationNamespace('valid')]
-	    },
-
-	    _defineInvalidProperty: function (target) {
-	      var self = this
-	      Object.defineProperty(target, this._getValidationNamespace('invalid'), {
-	        enumerable: true,
-	        configurable: true,
-	        get: function () {
-	          return !target[self._getValidationNamespace('valid')]
-	        }
-	      })
-	    },
-
-	    _undefineInvalidProperty: function (target) {
-	      delete target[this._getValidationNamespace('invalid')]
-	    },
-
-	    _defineDirtyProperty: function (target, getter) {
-	      Object.defineProperty(target, this._getValidationNamespace('dirty'), {
-	        enumerable: true,
-	        configurable: true,
-	        get: getter
-	      })
-	    },
-
-	    _undefineDirtyProperty: function (target) {
-	      delete target[this._getValidationNamespace('dirty')]
-	    },
-
-	    _defineProperties: function () {
-	      var self = this
-
-	      var walk = function (obj, propName, namespaces) {
-	        var ret = false
-	        var keys = Object.keys(obj)
-	        var i = keys.length
-	        var key, last
-	        while (i--) {
-	          key = keys[i]
-	          last = obj[key]
-	          if (!(key in namespaces) && typeof last === 'object') {
-	            ret = walk(last, propName, namespaces)
-	            if ((propName === self._getValidationNamespace('valid') && !ret) ||
-	                (propName === self._getValidationNamespace('dirty') && ret)) {
-	              break
-	            }
-	          } else if (key === propName && typeof last !== 'object') {
-	            ret = last
-	            if ((key === self._getValidationNamespace('valid') && !ret) ||
-	                (key === self._getValidationNamespace('dirty') && ret)) {
-	              break
-	            }
-	          }
-	        }
-	        return ret
-	      }
-
-	      this._defineValidProperty(this.$parent, function () {
-	        var validationName = self._getValidationNamespace('validation')
-	        var validName = self._getValidationNamespace('valid')
-	        var namespaces = self.$options.validator.namespace
-
-	        return walk(this[validationName], validName, namespaces)
-	      })
-
-	      this._defineInvalidProperty(this.$parent)
-
-	      this._defineDirtyProperty(this.$parent, function () {
-	        var validationName = self._getValidationNamespace('validation')
-	        var dirtyName = self._getValidationNamespace('dirty')
-	        var namespaces = self.$options.validator.namespace
-
-	        return walk(this[validationName], dirtyName, namespaces)
-	      })
-	    },
-
-	    _undefineProperties: function () {
-	      this._undefineDirtyProperty(this.$parent)
-	      this._undefineInvalidProperty(this.$parent)
-	      this._undefineValidProperty(this.$parent)
-	    },
-
-	    _defineValidationScope: function () {
-	      this.$parent.$add(this._getValidationNamespace('validation'), {})
-	    },
-
-	    _undefineValidationScope: function () {
-	      var validationName = this._getValidationNamespace('validation')
-	      this.$parent.$delete(validationName)
-	    },
-
-	    _defineModelValidationScope: function (keypath) {
-	      var self = this
-	      var validationName = this._getValidationNamespace('validation')
-	      var dirtyName = this._getValidationNamespace('dirty')
-
-	      var keys = keypath.split('.')
-	      var last = this[validationName]
-	      var obj, key
-	      for (var i = 0; i < keys.length; i++) {
-	        key = keys[i]
-	        obj = last[key]
-	        if (!obj) {
-	          obj = {}
-	          last.$add(key, obj)
-	        }
-	        last = obj
-	      }
-	      last.$add(dirtyName, false)
-
-	      this._defineValidProperty(last, function () {
-	        var ret = true
-	        var validators = self._validators[keypath]
-	        var i = validators.length
-	        var validator
-	        while (i--) {
-	          validator = validators[i]
-	          if (last[validator.name]) {
-	            ret = false
-	            break
-	          }
-	        }
-	        return ret
-	      })
-	      this._defineInvalidProperty(last)
-	      
-	      this._validators[keypath] = []
-
-	      this._watchModel(keypath, function (val, old) {
-	        self._updateDirtyProperty(keypath, val)
-	        self._validators[keypath].forEach(function (validator) {
-	          self._doValidate(keypath, validator.name, val)
-	        })
-	      })
-	    },
-
-	    _undefineModelValidationScope: function (keypath, validator) {
-	      if (this.$parent) {
-	        var targetPath = [this._getValidationNamespace('validation'), keypath].join('.')
-	        var target = this.$parent.$get(targetPath)
-	        if (target && Object.keys(target).length === 3 &&
-	            this._getValidationNamespace('valid') in target &&
-	            this._getValidationNamespace('invalid') in target &&
-	            this._getValidationNamespace('dirty') in target) {
-	          this._unwatchModel(keypath)
-	          this._undefineDirtyProperty(target)
-	          this._undefineInvalidProperty(target)
-	          this._undefineValidProperty(target)
-	          removeValidationProperties(
-	            this.$parent.$get(this._getValidationNamespace('validation')),
-	            keypath
-	          )
-	        }
-	      }
-	    },
-
-	    _defineValidatorToValidationScope: function (keypath, validator) {
-	      var target = _.getTarget(this[this._getValidationNamespace('validation')], keypath)
-	      target.$add(validator, null)
-	    },
-
-	    _undefineValidatorToValidationScope: function (keypath, validator) {
-	      var validationName = this._getValidationNamespace('validation')
-	      if (this.$parent) {
-	        var targetPath = [validationName, keypath].join('.')
-	        var target = this.$parent.$get(targetPath)
-	        if (target) {
-	          target.$delete(validator)
-	        }
-	      }
-	    },
-
-	    _getInitialValue: function (keypath) {
-	      return this._initialValues[keypath]
-	    },
-
-	    _setInitialValue: function (keypath, val) {
-	      this._initialValues[keypath] = val
-	    },
-
-	    _addValidator: function (keypath, validator, arg) {
-	      this._validators[keypath].push({ name: validator, arg: arg })
-	    },
-
-	    _changeValidator: function (keypath, validator, arg) {
-	      var validators = this._validators[keypath]
-	      var i = validators.length
-	      while (i--) {
-	        if (validators[i].name === validator) {
-	          validators[i].arg = arg
-	          break
-	        }
-	      }
-	    },
-
-	    _findValidator: function (keypath, validator) {
-	      var found = null
-	      var validators = this._validators[keypath]
-	      var i = validators.length
-	      while (i--) {
-	        if (validators[i].name === validator) {
-	          found = validators[i]
-	          break
-	        }
-	      }
-	      return found
-	    },
-
-	    _watchModel: function (keypath, fn) {
-	      this._validatorWatchers[keypath] =
-	        this.$watch(keypath, fn, { deep: false, immediate: true })
-	    },
-
-	    _unwatchModel: function (keypath) {
-	      var unwatch = this._validatorWatchers[keypath]
-	      if (unwatch) {
-	        unwatch()
-	        delete this._validatorWatchers[keypath]
-	      }
-	    },
-	    
-	    _addReadyEvents: function (id, event) {
-	      this._readyEvents[id] = event
-	    },
-
-	    _getReadyEvents: function (id) {
-	      return this._readyEvents[id]
-	    },
-
-	    _isRegistedReadyEvent: function (id) {
-	      return id in this._readyEvents
-	    },
-
-	    _updateDirtyProperty: function (keypath, val) {
-	      var validationName = this._getValidationNamespace('validation')
-	      var dirtyName = this._getValidationNamespace('dirty')
-
-	      var target = _.getTarget(this[validationName], keypath)
-	      if (target) {
-	        target.$set(dirtyName, this._getInitialValue(keypath) !== val)
-	      }
-	    },
-
-	    _doValidate: function (keypath, validateName, val) {
-	      var validationName = this._getValidationNamespace('validation')
-
-	      var target = _.getTarget(this[validationName], keypath)
-	      var validator = this._findValidator(keypath, validateName)
-	      if (target && validator) {
-	        this._invokeValidator(
-	          this._validates[validateName],
-	          val, validator.arg,
-	          function (result) {
-	            target.$set(validateName, !result)
-	          })
-	      }
-	    },
-	    
-	    _invokeValidator: function (validator, val, arg, fn) {
-	      var future = validator.call(this, val, arg)
-	      if (typeof future === 'function') { // async
-	        if (future.resolved) {
-	          // cached
-	          fn(future.resolved)
-	        } else if (future.requested) {
-	          // pool callbacks
-	          future.pendingCallbacks.push(fn)
-	        } else {
-	          future.requested = true
-	          var fns = future.pendingCallbacks = [fn]
-	          future(function resolve () {
-	            future.resolved = true
-	            for (var i = 0, l = fns.length; i < l; i++) {
-	              fns[i](true)
-	            }
-	          }, function reject () {
-	            fn(false)
-	          })
-	        }
-	      } else { // sync
-	        fn(future)
-	      }
-	    }
-	  }
-	}
-
-	/**
-	 * Remove properties from target validation
-	 *
-	 * @param {Object} validation
-	 * @param {String} keypath
-	 */
-
-	function removeValidationProperties (validation, keypath) {
-	  var keys = keypath.split('.')
-	  var key, obj
-	  while (keys.length) {
-	    key = keys.pop()
-	    if (keys.length !== 0) {
-	      obj = _.getTarget(validation, keys.join('.'))
-	      obj.$delete(key)
-	    } else {
-	      validation.$delete(key)
-	    }
-	  }
-	}
-
-
-/***/ }
-/******/ ])
-});
-;
+(function (global, factory) {
+  typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
+  typeof define === 'function' && define.amd ? define(factory) :
+  global.VueValidator = factory();
+}(this, function () { 'use strict';
+
+  var babelHelpers = {};
+
+  babelHelpers.typeof = function (obj) {
+    return obj && typeof Symbol !== "undefined" && obj.constructor === Symbol ? "symbol" : typeof obj;
+  };
+
+  babelHelpers.classCallCheck = function (instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  };
+
+  babelHelpers.createClass = (function () {
+    function defineProperties(target, props) {
+      for (var i = 0; i < props.length; i++) {
+        var descriptor = props[i];
+        descriptor.enumerable = descriptor.enumerable || false;
+        descriptor.configurable = true;
+        if ("value" in descriptor) descriptor.writable = true;
+        Object.defineProperty(target, descriptor.key, descriptor);
+      }
+    }
+
+    return function (Constructor, protoProps, staticProps) {
+      if (protoProps) defineProperties(Constructor.prototype, protoProps);
+      if (staticProps) defineProperties(Constructor, staticProps);
+      return Constructor;
+    };
+  })();
+
+  babelHelpers;
+  /**
+   * Utilties
+   */
+
+  // export default for holding the Vue reference
+  var exports$1 = {};
+  /**
+   * warn
+   *
+   * @param {String} msg
+   * @param {Error} [err]
+   *
+   */
+
+  function warn(msg, err) {
+    if (window.console) {
+      console.warn('[vue-validator] ' + msg);
+      if (err) {
+        console.warn(err.stack);
+      }
+    }
+  }
+
+  /**
+   * empty
+   *
+   * @param {Array|Object} target
+   * @return {Boolean}
+   */
+
+  function empty(target) {
+    if (target === null) {
+      return true;
+    }
+
+    if (Array.isArray(target)) {
+      if (target.length > 0) {
+        return false;
+      }
+      if (target.length === 0) {
+        return true;
+      }
+    } else if (exports$1.Vue.util.isPlainObject(target)) {
+      for (var key in target) {
+        if (exports$1.Vue.util.hasOwn(target, key)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * each
+   *
+   * @param {Array|Object} target
+   * @param {Function} iterator
+   * @param {Object} [context]
+   */
+
+  function each(target, iterator, context) {
+    if (Array.isArray(target)) {
+      for (var i = 0; i < target.length; i++) {
+        iterator.call(context || target[i], target[i], i);
+      }
+    } else if (exports$1.Vue.util.isPlainObject(target)) {
+      var hasOwn = exports$1.Vue.util.hasOwn;
+      for (var key in target) {
+        if (hasOwn(target, key)) {
+          iterator.call(context || target[key], target[key], key);
+        }
+      }
+    }
+  }
+
+  /**
+   * pull
+   *
+   * @param {Array} arr
+   * @param {Object} item
+   * @return {Object|null}
+   */
+
+  function pull(arr, item) {
+    var index = exports$1.Vue.util.indexOf(arr, item);
+    return ~index ? arr.splice(index, 1) : null;
+  }
+
+  /**
+   * trigger
+   *
+   * @param {Element} el
+   * @param {String} event
+   */
+
+  function trigger(el, event) {
+    var e = document.createEvent('HTMLEvents');
+    e.initEvent(event, true, false);
+    el.dispatchEvent(e);
+  }
+
+  /**
+   * Fundamental validate functions
+   */
+
+  /**
+   * required
+   *
+   * This function validate whether the value has been filled out.
+   *
+   * @param val
+   * @return {Boolean}
+   */
+
+  function required(val) {
+    if (Array.isArray(val)) {
+      return val.length > 0;
+    } else if (typeof val === 'number' || typeof val === 'function') {
+      return true;
+    } else if (typeof val === 'boolean') {
+      return val;
+    } else if (typeof val === 'string') {
+      return val.length > 0;
+    } else if (val !== null && (typeof val === 'undefined' ? 'undefined' : babelHelpers.typeof(val)) === 'object') {
+      return Object.keys(val).length > 0;
+    } else if (val === null || val === undefined) {
+      return false;
+    }
+  }
+
+  /**
+   * pattern
+   *
+   * This function validate whether the value matches the regex pattern
+   *
+   * @param val
+   * @param {String} pat
+   * @return {Boolean}
+   */
+
+  function pattern(val, pat) {
+    if (typeof pat !== 'string') {
+      return false;
+    }
+
+    var match = pat.match(new RegExp('^/(.*?)/([gimy]*)$'));
+    if (!match) {
+      return false;
+    }
+
+    return new RegExp(match[1], match[2]).test(val);
+  }
+
+  /**
+   * minlength
+   *
+   * This function validate whether the minimum length of the string.
+   *
+   * @param {String} val
+   * @param {String|Number} min
+   * @return {Boolean}
+   */
+
+  function minlength(val, min) {
+    return typeof val === 'string' && isInteger(min, 10) && val.length >= parseInt(min, 10);
+  }
+
+  /**
+   * maxlength
+   *
+   * This function validate whether the maximum length of the string.
+   *
+   * @param {String} val
+   * @param {String|Number} max
+   * @return {Boolean}
+   */
+
+  function maxlength(val, max) {
+    return typeof val === 'string' && isInteger(max, 10) && val.length <= parseInt(max, 10);
+  }
+
+  /**
+   * min
+   *
+   * This function validate whether the minimum value of the numberable value.
+   *
+   * @param {*} val
+   * @param {*} arg minimum
+   * @return {Boolean}
+   */
+
+  function min(val, arg) {
+    return !isNaN(+val) && !isNaN(+arg) && +val >= +arg;
+  }
+
+  /**
+   * max
+   *
+   * This function validate whether the maximum value of the numberable value.
+   *
+   * @param {*} val
+   * @param {*} arg maximum
+   * @return {Boolean}
+   */
+
+  function max(val, arg) {
+    return !isNaN(+val) && !isNaN(+arg) && +val <= +arg;
+  }
+
+  /**
+   * isInteger
+   *
+   * This function check whether the value of the string is integer.
+   *
+   * @param {String} val
+   * @return {Boolean}
+   * @private
+   */
+
+  function isInteger(val) {
+    return (/^(-?[1-9]\d*|0)$/.test(val)
+    );
+  }
+
+  var validators = Object.freeze({
+    required: required,
+    pattern: pattern,
+    minlength: minlength,
+    maxlength: maxlength,
+    min: min,
+    max: max
+  });
+
+  function Asset (Vue) {
+
+    // register validator asset
+    Vue.config._assetTypes.push('validator');
+
+    // set global validators asset
+    var assets = Object.create(null);
+    Vue.util.extend(assets, validators);
+    Vue.options.validators = assets;
+
+    // set option merge strategy
+    var strats = Vue.config.optionMergeStrategies;
+    if (strats) {
+      strats.validators = strats.methods;
+    }
+
+    /**
+     * Register or retrieve a global validator definition.
+     *
+     * @param {String} id
+     * @param {Function} definition
+     */
+
+    Vue.validator = function (id, definition) {
+      if (!definition) {
+        return Vue.options['validators'][id];
+      } else {
+        Vue.options['validators'][id] = definition;
+      }
+    };
+  }
+
+  function Override (Vue) {
+
+    // override _init
+    var init = Vue.prototype._init;
+    Vue.prototype._init = function (options) {
+      if (!this._validatorMaps) {
+        this._validatorMaps = Object.create(null);
+      }
+      init.call(this, options);
+    };
+
+    // override _destroy
+    var destroy = Vue.prototype._destroy;
+    Vue.prototype._destroy = function () {
+      destroy.apply(this, arguments);
+      this._validatorMaps = null;
+    };
+  }
+
+  /**
+   * Validation class
+   */
+
+  var Validation = (function () {
+    function Validation(dir) {
+      babelHelpers.classCallCheck(this, Validation);
+
+      var camelize = exports$1.Vue.util.camelize;
+
+      this.model = camelize(dir.arg);
+      this.el = dir.el;
+      this.dir = dir;
+      this.init = dir.el.value;
+      this.touched = false;
+      this.dirty = false;
+      this.modified = false;
+      this.validators = Object.create(null);
+    }
+
+    babelHelpers.createClass(Validation, [{
+      key: 'setValidation',
+      value: function setValidation(name, arg, msg) {
+        var validator = this.validators[name];
+        if (!validator) {
+          validator = this.validators[name] = {};
+          validator.name = name;
+        }
+
+        validator.arg = arg;
+        if (msg) {
+          validator.msg = msg;
+        }
+      }
+    }, {
+      key: 'listener',
+      value: function listener(e) {
+        if (e.relatedTarget && (e.relatedTarget.tagName === 'A' || e.relatedTarget.tagName === 'BUTTON')) {
+          return;
+        }
+
+        if (e.type === 'blur') {
+          this.touched = true;
+        }
+
+        if (!this.dirty && this.el.value !== this.init) {
+          this.dirty = true;
+        }
+
+        this.modified = this.el.value !== this.init;
+
+        this.dir.validator.validate();
+      }
+    }, {
+      key: 'validate',
+      value: function validate() {
+        var _this = this;
+
+        var extend = exports$1.Vue.util.extend;
+        var ret = Object.create(null);
+        var messages = Object.create(null);
+        var valid = true;
+
+        each(this.validators, function (descriptor, name) {
+          var validator = _this._resolveValidator(name);
+          var res = validator.call(_this.dir.vm, _this.el.value, descriptor.arg);
+          if (!res) {
+            valid = false;
+            var msg = descriptor.msg;
+            if (msg) {
+              messages[name] = typeof msg === 'function' ? msg() : msg;
+            }
+          }
+          ret[name] = !res;
+        }, this);
+
+        trigger(this.el, valid ? 'valid' : 'invalid');
+
+        var props = {
+          valid: valid,
+          invalid: !valid,
+          touched: this.touched,
+          untouched: !this.touched,
+          dirty: this.dirty,
+          pristine: !this.dirty,
+          modified: this.modified
+        };
+        if (!empty(messages)) {
+          props.messages = messages;
+        }
+        extend(ret, props);
+
+        return ret;
+      }
+    }, {
+      key: '_resolveValidator',
+      value: function _resolveValidator(name) {
+        var resolveAsset = exports$1.Vue.util.resolveAsset;
+        return resolveAsset(this.dir.vm.$options, 'validators', name);
+      }
+    }]);
+    return Validation;
+  })();
+
+  function Validate (Vue) {
+
+    var _ = Vue.util;
+
+    Vue.directive('validate', {
+      params: ['group'],
+
+      bind: function bind() {
+        var vm = this.vm;
+        var validatorName = vm.$options._validator;
+        if (!validatorName) {
+          // TODO: should be implemented error message
+          warn('TODO: should be implemented error message');
+          return;
+        }
+
+        var validator = this.validator = this.vm._validatorMaps[validatorName];
+        var validation = this.validation = new Validation(this);
+        validator.addValidation(validation);
+
+        if (this.params.group) {
+          validator.addGroupValidation(this.params.group, validation);
+        }
+
+        this.on('blur', _.bind(this.validation.listener, this.validation));
+        this.on('input', _.bind(this.validation.listener, this.validation));
+      },
+      update: function update(value, old) {
+        if (!value) {
+          return;
+        }
+
+        if (_.isPlainObject(value)) {
+          this.handleObject(value);
+        } else if (Array.isArray(value)) {
+          this.handleArray(value);
+        }
+
+        this.validator.validate(this.validation);
+      },
+      handleArray: function handleArray(value) {
+        var _this = this;
+
+        each(value, function (val) {
+          _this.validation.setValidation(val);
+        }, this);
+      },
+      handleObject: function handleObject(value) {
+        var _this2 = this;
+
+        each(value, function (val, key) {
+          if (_.isPlainObject(val)) {
+            if ('rule' in val) {
+              var msg = 'message' in val ? val.message : null;
+              _this2.validation.setValidation(key, val.rule, msg);
+            }
+          } else {
+            _this2.validation.setValidation(key, val);
+          }
+        }, this);
+      },
+      unbind: function unbind() {
+        if (this.validator && this.validation) {
+          if (this.params.group) {
+            this.validator.removeGroupValidation(this.params.group, this.validation);
+          }
+          this.validator.removeValidation(this.validation);
+          this.validator = null;
+          this.validation = null;
+        }
+      }
+    });
+  }
+
+  /**
+   * Validator class
+   */
+
+  var Validator$1 = (function () {
+    function Validator(name, dir, groups) {
+      var _this = this;
+
+      babelHelpers.classCallCheck(this, Validator);
+
+      this.name = name;
+      this.scope = Object.create(null);
+      this._dir = dir;
+      this._validations = [];
+      this._groups = groups;
+      this._groupValidations = Object.create(null);
+
+      each(groups, function (group) {
+        _this._groupValidations[group] = [];
+      }, this);
+    }
+
+    babelHelpers.createClass(Validator, [{
+      key: 'enableReactive',
+      value: function enableReactive() {
+        exports$1.Vue.util.defineReactive(this._dir.vm, this.name, this.scope);
+        this._dir.vm._validatorMaps[this.name] = this;
+      }
+    }, {
+      key: 'disableReactive',
+      value: function disableReactive() {
+        this._dir.vm._validatorMaps[this.name] = null;
+        this._dir.vm[this.name] = null;
+      }
+    }, {
+      key: 'addValidation',
+      value: function addValidation(validation) {
+        this._validations.push(validation);
+      }
+    }, {
+      key: 'removeValidation',
+      value: function removeValidation(validation) {
+        exports$1.Vue.util.del(this.scope, validation.model);
+        pull(this._validations, validation);
+      }
+    }, {
+      key: 'addGroupValidation',
+      value: function addGroupValidation(group, validation) {
+        var validations = this._groupValidations[group];
+        if (validations) {
+          validations.push(validation);
+        }
+      }
+    }, {
+      key: 'removeGroupValidation',
+      value: function removeGroupValidation(group, validation) {
+        var validations = this._groupValidations[group];
+        if (validations) {
+          pull(validations, validation);
+        }
+      }
+    }, {
+      key: 'validate',
+      value: function validate(validation) {
+        var _this2 = this;
+
+        each(this._validations, function (validation, index) {
+          var res = validation.validate();
+          exports$1.Vue.util.set(_this2.scope, validation.model, res);
+        }, this);
+      }
+    }, {
+      key: 'setupScope',
+      value: function setupScope() {
+        var _this3 = this;
+
+        this._defineProperties(this._validations, this.scope);
+
+        each(this._groups, function (name) {
+          var validations = _this3._groupValidations[name];
+          var group = Object.create(null);
+          exports$1.Vue.util.set(_this3.scope, name, group);
+          _this3._defineProperties(validations, group);
+        }, this);
+      }
+    }, {
+      key: 'waitFor',
+      value: function waitFor(cb) {
+        var vm = this._dir.vm;
+        var method = '$activateValidator';
+
+        this._dir.vm[method] = function () {
+          cb();
+          vm[method] = null;
+        };
+      }
+    }, {
+      key: '_defineProperties',
+      value: function _defineProperties(validations, target) {
+        var _this4 = this;
+
+        var bind = exports$1.Vue.util.bind;
+
+        each({
+          valid: { fn: this._defineValid, arg: validations },
+          invalid: { fn: this._defineInvalid, arg: target },
+          touched: { fn: this._defineTouched, arg: validations },
+          untouched: { fn: this._defineUntouched, arg: target },
+          modified: { fn: this._defineModified, arg: validations },
+          dirty: { fn: this._defineDirty, arg: validations },
+          pristine: { fn: this._definePristine, arg: target },
+          messages: { fn: this._defineMessages, arg: validations }
+        }, function (descriptor, name) {
+          Object.defineProperty(target, name, {
+            enumerable: true,
+            configurable: true,
+            get: function get() {
+              return bind(descriptor.fn, _this4)(descriptor.arg);
+            }
+          });
+        }, this);
+      }
+    }, {
+      key: '_walkValidations',
+      value: function _walkValidations(validations, property, condition) {
+        var _this5 = this;
+
+        var hasOwn = exports$1.Vue.util.hasOwn;
+        var ret = condition;
+
+        each(validations, function (validation, index) {
+          if (ret === !condition) {
+            return;
+          }
+          if (hasOwn(_this5.scope, validation.model)) {
+            var target = _this5.scope[validation.model];
+            if (target && target[property] === !condition) {
+              ret = !condition;
+            }
+          }
+        }, this);
+
+        return ret;
+      }
+    }, {
+      key: '_defineValid',
+      value: function _defineValid(validations) {
+        return this._walkValidations(validations, 'valid', true);
+      }
+    }, {
+      key: '_defineInvalid',
+      value: function _defineInvalid(scope) {
+        return !scope.valid;
+      }
+    }, {
+      key: '_defineTouched',
+      value: function _defineTouched(validations) {
+        return this._walkValidations(validations, 'touched', false);
+      }
+    }, {
+      key: '_defineUntouched',
+      value: function _defineUntouched(scope) {
+        return !scope.touched;
+      }
+    }, {
+      key: '_defineModified',
+      value: function _defineModified(validations) {
+        return this._walkValidations(validations, 'modified', false);
+      }
+    }, {
+      key: '_defineDirty',
+      value: function _defineDirty(validations) {
+        return this._walkValidations(validations, 'dirty', false);
+      }
+    }, {
+      key: '_definePristine',
+      value: function _definePristine(scope) {
+        return !scope.dirty;
+      }
+    }, {
+      key: '_defineMessages',
+      value: function _defineMessages(validations) {
+        var _this6 = this;
+
+        var extend = exports$1.Vue.util.extend;
+        var hasOwn = exports$1.Vue.util.hasOwn;
+        var ret = Object.create(null);
+
+        each(validations, function (validation, index) {
+          if (hasOwn(_this6.scope, validation.model)) {
+            var target = _this6.scope[validation.model];
+            if (target && !empty(target['messages'])) {
+              ret[validation.model] = extend(Object.create(null), target['messages']);
+            }
+          }
+        }, this);
+
+        return empty(ret) ? undefined : ret;
+      }
+    }]);
+    return Validator;
+  })();
+
+  function Validator (Vue) {
+    var _ = Vue.util;
+    var FragmentFactory = Vue.FragmentFactory;
+    var vIf = Vue.directive('if');
+    var _bind = Vue.util.bind;
+
+    Vue.elementDirective('validator', {
+      params: ['name', 'groups', 'lazy'],
+
+      bind: function bind() {
+        var _this = this;
+
+        if (!this.params.name) {
+          // TODO: should be implemented validator:bind name params nothing error'
+          warn('TODO: should be implemented validator:bind name params nothing error');
+          return;
+        }
+
+        var validatorName = this.validatorName = '$' + this.params.name;
+        if (!this.vm._validatorMaps) {
+          // TODO: should be implemented error message'
+          warn('TODO: should be implemented error message');
+          return;
+        }
+
+        var groups = [];
+        if (this.params.groups) {
+          if (_.isArray(this.params.groups)) {
+            groups = this.params.groups;
+          } else if (!_.isPlainObject(this.params.groups) && typeof this.params.groups === 'string') {
+            groups.push(this.params.groups);
+          }
+        }
+
+        var validator = this.validator = new Validator$1(validatorName, this, groups);
+        validator.enableReactive();
+        validator.setupScope();
+
+        validator.waitFor(_bind(function () {
+          _this.render(validator, validatorName);
+          validator.validate();
+        }, this));
+
+        if (!this.params.lazy) {
+          this.vm.$activateValidator();
+        }
+      },
+      render: function render(validator, validatorName) {
+        this.anchor = _.createAnchor('vue-validator');
+        _.replace(this.el, this.anchor);
+        this.insert(validatorName);
+      },
+      insert: function insert(name) {
+        _.extend(this.vm.$options, { _validator: name });
+        this.factory = new FragmentFactory(this.vm, this.el.innerHTML);
+        vIf.insert.call(this);
+      },
+      unbind: function unbind() {
+        vIf.unbind.call(this);
+
+        this.validator.disableReactive();
+
+        if (this.validatorName) {
+          this.validatorName = null;
+          this.validator = null;
+        }
+      }
+    });
+  }
+
+  /**
+   * plugin
+   *
+   * @param {Function} Vue
+   * @param {Object} options
+   */
+
+  function plugin(Vue) {
+    var options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+
+    if (plugin.installed) {
+      warn('already installed.');
+      return;
+    }
+
+    exports$1.Vue = Vue;
+    Asset(Vue);
+
+    Override(Vue);
+    Validator(Vue);
+    Validate(Vue);
+  }
+
+  plugin.version = '2.0.0-alpha.8';
+
+  if (typeof window !== 'undefined' && window.Vue) {
+    window.Vue.use(plugin);
+  }
+
+  return plugin;
+
+}));
